@@ -1,0 +1,13 @@
+#! /bin/sh
+#
+# Mastodon build for savelogs
+#
+
+. ./Mastodon.inc
+exedir ROOT
+
+make clean
+CC="$SYSCC" CFLAGS="-O2" make || exit 1
+ROOT=$ROOT make install
+make clean
+exit 0
