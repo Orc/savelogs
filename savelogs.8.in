@@ -1,6 +1,6 @@
-.TH SAVELOGS 8 "" "%E%" "Mastodon Linux"
+.TH SAVELOGS 8 "" "%E%" "Version @VERSION@"
 .SH NAME
-savelog \- rotate logs
+savelogs \- rotate logs
 .SH SYNOPSIS
 savelogs
 .RI [ -dfv ]

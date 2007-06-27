@@ -20,7 +20,9 @@
  */
 #include <stdio.h>
 #include <fcntl.h>
-#include <getopt.h>
+#if HAVE_GETOPT_H
+#   include <getopt.h>
+#endif
 #include <string.h>
 #include <malloc.h>
 #include <stdarg.h>
@@ -55,7 +57,7 @@ typedef struct __victim {
     int dotruncate;		/* truncate the file instead of archiving */
     int dotouch;		/* manually create the file with given mode */
     char *class;		/* log maintenance class */
-    Action *sig;		/* command to do to alert daemons */
+    Action **sig;		/* commands to do to alert daemons */
 } Victim;
 
 Action *update_cmds = (Action *)0;
@@ -244,6 +246,33 @@ GetClass(int token, Victim **vp)
 
 
 /*
+ * AddSig() adds a signal to a victim
+ */
+void
+AddSig(Victim *v, void *action)
+{
+    if (v->sig == 0) {
+	v->sig = malloc( 2 * sizeof v->sig[0]);
+	v->sig[0] = action;
+	v->sig[1] = 0;
+    }
+    else {
+	int ct;
+
+	for (ct=0; v->sig[ct]; ct++)
+	    if (v->sig[ct] == action) {
+		/* don't duplicate actions. */
+		return;
+	    }
+
+	v->sig = realloc(v->sig, (ct+1) * sizeof v->sig[0]);
+	v->sig[ct] = action;
+	v->sig[1+ct] = 0;
+    }
+} /* AddSig */
+
+
+/*
  * GetAction() gets a SIGNAL specification
  */
 GetAction(int token, Victim **vp)
@@ -273,7 +302,7 @@ GetAction(int token, Victim **vp)
 
     for (tmp = update_cmds; tmp; tmp = tmp->next)
 	if (strcmp(tmp->command, bfr) == 0) {
-	    (*vp)->sig = tmp;
+	    AddSig(*vp, tmp);
 	    tmp->links++;
 	    return 0;
 	}
@@ -288,7 +317,7 @@ GetAction(int token, Victim **vp)
 
     tmp->links = 1;
     tmp->triggered = 0;
-    (*vp)->sig = tmp;
+    AddSig(*vp, tmp);
     tmp->next = update_cmds;
     update_cmds = tmp;
     return 0;
@@ -505,8 +534,10 @@ examine()
 		printf("\tTRUNCATE\n");
 	    if (p->dotouch)
 		printf("\tTOUCH %o\n", p->dotouch);
-	    if (p->sig)
-		printf("\tSIGNAL \"%s\"\n", p->sig->command);
+	    if (p->sig) {
+		for (i=0; p->sig[i]; i++)
+		    printf("\tSIGNAL \"%s\"\n", p->sig[i]->command);
+	    }
 	}
     }
 
@@ -597,8 +628,10 @@ examine()
 
 	if (p->dotruncate) {
 	    truncate(p->pathname, 0L);
-	    if (p->sig)
-		p->sig->active++;
+	    if (p->sig) {
+		for (i=0; p->sig[i]; i++)
+		    p->sig[i]->active++;
+	    }
 
 	}
 	else {
@@ -609,8 +642,10 @@ examine()
 	    if (p->dotouch)
 		close(creat(p->pathname, p->dotouch));
 
-	    if (p->sig)
-		p->sig->active++;
+	    if (p->sig) {
+		for (i=0; p->sig[i]; i++)
+		    p->sig[i]->active++;
+	    }
 
 	    /* save the log in a save directory */
 	    if (p->savedir)

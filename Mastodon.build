@@ -6,8 +6,9 @@
 . ./Mastodon.inc
 exedir ROOT
 
-make clean
-CC="$SYSCC" CFLAGS="-O2" make || exit 1
-ROOT=$ROOT make install
-make clean
+test Makefile && make distclean 
+
+CC="$SYSCC" CFLAGS="-O2" ./configure --prefix=/usr --confdir=/etc
+make || exit 1
+ROOT=$ROOT make install install.conf
 exit 0

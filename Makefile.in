@@ -1,0 +1,54 @@
+#
+# makefile for savelogs
+#
+LEX	= @LEX@ -li
+CC	= @CC@
+CFLAGS	= @CFLAGS@
+MANDIR  = $(ROOT)@mandir@
+CONFDIR = $(ROOT)@confdir@
+LIBDIR  = $(ROOT)@libdir@
+BINDIR  = $(ROOT)@exedir@
+
+OBJECTS	= savelogs.o lex.yy.o
+
+target: savelogs
+
+savelogs: $(OBJECTS) tokens.h
+	$(CC) $(CFLAGS) -o savelogs $(OBJECTS)
+
+lex.yy.o: scan.l tokens.h
+	$(LEX) scan.l
+	$(CC) $(CFLAGS) -c lex.yy.c
+
+savelogs.o: savelogs.c tokens.h
+
+clean:
+	rm -f savelogs *.o lex.yy.c DEMO?
+	rm -rf OLD
+
+distclean spotless: clean
+	rm -f config.* Makefile savelogs.8
+
+
+demo: savelogs
+	-mkdir OLD
+	for file in DEMO1 DEMO2 DEMO3 DEMO4 DEMO5; do \
+	    dd if=/dev/zero of=$$file count=201 bs=1024; \
+	done
+	@SED@ -e "s~@HERE@~`pwd`~" < demo.conf.sh | ./savelogs -dddddC -
+
+install: install.man install.bin 
+
+install.man:
+	@INSTALL@ -d $(MANDIR)/man8
+	@INSTALL_DATA@ savelogs.8 $(MANDIR)/man8
+
+install.bin:
+	@INSTALL@ -d $(BINDIR)
+	@INSTALL_PROGRAM@ savelogs $($BINDIR)
+
+install.conf:
+	if [ ! -r $(CONFDIR)/savelogs.conf ]; then \
+	    @INSTALL@ -d $(CONFDIR); \
+	    @INSTALL_DATA@ log.conf $(CONFDIR)/savelogs.conf; \
+	fi
