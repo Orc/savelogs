@@ -30,12 +30,16 @@ distclean spotless: clean
 	rm -f config.* Makefile savelogs.8
 
 
-demo: savelogs
+test demo: savelogs
 	-mkdir OLD
 	for file in DEMO1 DEMO2 DEMO3 DEMO4 DEMO5; do \
 	    dd if=/dev/zero of=$$file count=201 bs=1024; \
 	done
-	@SED@ -e "s~@HERE@~`pwd`~" < demo.conf.sh | ./savelogs -dddddC -
+	@SED@ -e "s~@HERE@~`pwd`~g" < demo.conf.sh | ./savelogs -dddddC -
+	@if [ ! -s DEMO1 ]; then echo "test failed on DEMO1"; exit 1; fi
+	@if [ ! -s DEMO2 ]; then echo "test failed on DEMO1"; exit 1; fi
+	@if [   -s DEMO3 ]; then echo "test failed on DEMO3"; exit 1; fi
+	@if [   -s DEMO4 ]; then echo "test failed on DEMO4"; exit 1; fi
 
 install: install.man install.bin 
 

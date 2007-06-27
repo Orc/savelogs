@@ -265,7 +265,7 @@ AddSig(Victim *v, void *action)
 		return;
 	    }
 
-	v->sig = realloc(v->sig, (ct+1) * sizeof v->sig[0]);
+	v->sig = realloc(v->sig, (ct+2) * sizeof v->sig[0]);
 	v->sig[ct] = action;
 	v->sig[1+ct] = 0;
     }
@@ -373,7 +373,7 @@ GetEvery(int token, Victim** vp)
     }
     if (token == WEEKS)
 	interval *= 7;
-    if (token == YEARS)
+    else if (token == YEARS)
 	interval *= (52*7);
     (*vp)->interval = interval;
     return 0;
