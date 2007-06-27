@@ -10,7 +10,8 @@
 #define EVERY	10		/* the keyword 'EVERY' */
 #define DAYS	11		/* the keyword 'DAYS' */
 #define WEEKS	12		/* the keyword 'WEEKS' */
-#define SIZE_SPECIFICATION 13	/* a number, optionally followed by K or M */
-#define TRUNCATE	14	/* the keyword 'TRUNCATE' */
-#define TOUCH		15	/* the keyword 'TOUCH' */
-#define CLASS		16	/* maintenance class */
+#define YEARS	12		/* the keyword 'YEARS' */
+#define SIZE_SPECIFICATION 14	/* a number, optionally followed by K or M */
+#define TRUNCATE	15	/* the keyword 'TRUNCATE' */
+#define TOUCH		16	/* the keyword 'TOUCH' */
+#define CLASS		17	/* maintenance class */

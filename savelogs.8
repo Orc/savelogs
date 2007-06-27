@@ -1,0 +1,119 @@
+.TH SAVELOGS 8 "" "%E%" "Mastodon Linux"
+.SH NAME
+savelog \- rotate logs
+.SH SYNOPSIS
+savelogs
+.RI [ -dfv ]
+.RI [ -V ]
+.RI [ -C " config-file]"
+.SH DESCRIPTION
+The
+.B savelogs
+program rotates logs, optionally saving the old ones elsewhere and
+signalling the programs that created the logfiles.
+
+.SH THE CONFIGURATION FILE
+.I /etc/savelogs.conf
+tells
+.B savelogs
+which logs to rotate, when to rotate them, whether to back them up,
+and what to do after a log is rotated.   The format of the configuration
+file is a
+.BR filename ,
+followed by a list of commands, with punctuation and case ignored.
+.TP
+.BI EVERY " DAY|WEEK|YEAR"
+Rotate the log at this time.  If you tell it 
+.BR WEEK " (" YEAR "),"
+the rotation will happen on a sunday 
+(the last sunday of the year).  
+.TP
+.BI SAVE " n " IN " directory"
+Save
+.I n
+old logs in the named directory as
+.BI o. log\fR.
+Previously existing
+files will be renamed to
+.BI o file
+to accomodate the new file (so the old
+.I o.log
+becomes 
+.IR oo.log ,
+and so on), up to the number 
+of files you want to save.
+.TP
+.BI TOUCH " mode"
+After rotating the old log, create a new (empty) log with the given
+.IR mode .
+.TP
+.BI SIZE " size"
+Rotate the log if it gets larger than this size.  If you suffix the
+size with 
+.BR K ,
+the size is in kilobytes, and a
+.B M
+suffix means megabytes.
+.TP
+.BI SIGNAL " action"
+After rotating a log and 
+.BR TOUCH ing
+it, run this command.
+.B savelogs
+attempts to batch 
+.BR SIGNAL ,
+so that if multiple logs are rotated the actions will only be executed
+once.
+.PP
+For example, the following configuration file
+
+.nf
+/var/adm/syslog EVERY WEEK
+                SAVE 2 IN /var/adm/OLD
+                TOUCH 644
+                SIGNAL "killall -HUP syslogd"
+.fi
+
+.PP
+Rotates
+.I /var/adm/syslog
+every sunday, creating a new empty file with mode 644, saving two of the
+old logs in
+.IR /var/adm/OLD ,
+and sending a 
+.B HUP
+signal to
+.I syslogd
+after it's finished.
+
+
+.SH OPTIONS
+.TP
+.I \-V
+Print version information, then exit.
+.TP
+.I \-d
+Print debugging information.  More 
+.I \-d
+flags make
+.B savelogs
+generate more debugging.
+.TP
+.I \-f
+Rotate all logs, no matter what.
+.TP
+.IB \-C config-file
+Use the named
+.B config-file
+instead of the default
+.IR /etc/savelogs.conf .
+
+.SH FILES
+.IR /etc/savelog.conf "-- the default configuration file"
+
+.SH "SEE ALSO"
+.BR syslogd (8)
+
+.SH AUTHOR
+David Parsons
+.RI ( orc@pell.chi.il.us )

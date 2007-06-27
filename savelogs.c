@@ -32,7 +32,6 @@
 #include <time.h>
 
 #define LOG_CFG "/etc/savelogs.conf"
-#define VERSION	"1.1"
 
 #define SECSPERDAY	24*60*60	/* how many seconds in a day */
 
@@ -105,7 +104,7 @@ main(int argc, char **argv)
 	case 'd':   	debug++;				break;
 	case 'f':       forced++;				break;
 	case 'C':	cfgfile = strdup(optarg);		break;
-	case 'V':	printf("savelogs %s", VERSION);		finish(0);
+	case 'V':	printf(5 + "%Z% %M% %I% %E%\n");	finish(0);
 	default:	syslog(LOG_WARNING, "Bad option <%c>", rc);break;
 	}
     }
@@ -339,12 +338,14 @@ GetEvery(int token, Victim** vp)
     else
 	interval = 1;
 
-    if (token != DAYS && token != WEEKS) {
-	cfgerror("expected DAYS or WEEKS");
+    if (token != DAYS && token != WEEKS && token != YEARS) {
+	cfgerror("expected DAYS, WEEKS, or YEARS");
 	return -1;
     }
     if (token == WEEKS)
 	interval *= 7;
+    if (token == YEARS)
+	interval *= (52*7);
     (*vp)->interval = interval;
     return 0;
 } /* GetEvery */

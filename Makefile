@@ -29,8 +29,10 @@ demo: savelogs
 	./savelogs -dddddC demo.conf
 
 install:
+	install -d -m 744 -o root -g root $(ROOT)/usr/man/man8
 	install -d -m 755 -o root -g root $(ROOT)/usr/sbin
 	install -c -m 511 -o root -g root -s savelogs $(ROOT)/usr/sbin
+	install -c -m 444 savelogs.8 $(ROOT)/usr/man/man8
 	if [ ! -r $(ROOT)/etc/savelogs.conf ]; then \
 	    install -d -m 755 -o root -g root $(ROOT)/etc; \
 	    install -c -m 400 -o root -g root log.conf $(ROOT)/etc/savelogs.conf; \

@@ -24,6 +24,7 @@ save			{ return SAVE; }
 truncate		{ return TRUNCATE; }
 days{0,1}		{ return DAYS; }
 weeks{0,1}		{ return WEEKS; }
+years{0,1}		{ return YEARS; }
 touch			{ return TOUCH; }
 class			{ return CLASS; }
 #[^\n]*\n		{ line_number++; }
