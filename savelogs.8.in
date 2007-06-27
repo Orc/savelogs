@@ -108,8 +108,12 @@ Use the named
 instead of the default
 .IR /etc/savelogs.conf .
 
+.SH AVAILABILITY
+Current versions of savelogs can be found at
+.IR http://www.pell.portland.or.us/~orc/Code/savelogs .
+
 .SH FILES
-.IR /etc/savelog.conf "-- the default configuration file"
+.IR /etc/savelog.conf " -- the default configuration file"
 
 .SH "SEE ALSO"
 .BR syslogd (8)

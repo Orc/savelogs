@@ -45,7 +45,7 @@ install.man:
 
 install.bin:
 	@INSTALL@ -d $(BINDIR)
-	@INSTALL_PROGRAM@ savelogs $($BINDIR)
+	@INSTALL_PROGRAM@ savelogs $(BINDIR)
 
 install.conf:
 	if [ ! -r $(CONFDIR)/savelogs.conf ]; then \
