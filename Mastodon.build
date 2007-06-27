@@ -8,7 +8,7 @@ exedir ROOT
 
 test Makefile && make distclean 
 
-CC="$SYSCC" CFLAGS="-O2" ./configure --prefix=/usr --confdir=/etc
+CC="$SYSCC" CFLAGS="-O2" ./configure.sh --prefix=/usr --confdir=/etc
 make || exit 1
 ROOT=$ROOT make install install.conf
 exit 0
