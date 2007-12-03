@@ -1,7 +1,8 @@
 %{
 #include <stdio.h>
 #include <string.h>
-#include "tokens.h"
+
+#include "y.tab.h"
 
 int line_number;
 

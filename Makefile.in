@@ -9,18 +9,21 @@ CONFDIR = $(ROOT)@confdir@
 LIBDIR  = $(ROOT)@libdir@
 BINDIR  = $(ROOT)@exedir@
 
-OBJECTS	= savelogs.o lex.yy.o
+OBJECTS	= savelogs.o lex.yy.o y.tab.o
 
 target: savelogs
 
-savelogs: $(OBJECTS) tokens.h config.h
+savelogs: $(OBJECTS) y.tab.h config.h
 	$(CC) $(CFLAGS) -o savelogs $(OBJECTS)
 
-lex.yy.o: scan.l tokens.h config.h
+lex.yy.o: scan.l y.tab.h config.h
 	$(LEX) scan.l
 	$(CC) $(CFLAGS) -c lex.yy.c
 
-savelogs.o: savelogs.c tokens.h
+y.tab.c y.tab.h: gram.y
+	$(YACC) -d gram.y
+
+savelogs.o: savelogs.c y.tab.h config.h
 
 clean:
 	rm -f savelogs *.o lex.yy.c DEMO?

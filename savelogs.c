@@ -29,12 +29,13 @@
 #endif
 #include <stdlib.h>
 #include <stdarg.h>
-#include "tokens.h"
 #include <sys/syslog.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+
+#include "y.tab.h"
 
 #define LOG_CFG "/etc/savelogs.conf"
 
