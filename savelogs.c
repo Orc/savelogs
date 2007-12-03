@@ -24,7 +24,10 @@
 #   include <getopt.h>
 #endif
 #include <string.h>
+#if HAVE_MALLOC_H
 #include <malloc.h>
+#endif
+#include <stdlib.h>
 #include <stdarg.h>
 #include "tokens.h"
 #include <sys/syslog.h>
@@ -106,7 +109,7 @@ main(int argc, char **argv)
 	case 'd':   	debug++;				break;
 	case 'f':       forced++;				break;
 	case 'C':	cfgfile = strdup(optarg);		break;
-	case 'V':	printf(5 + "%Z% %M% %I% %E%\n");	finish(0);
+	case 'V':	puts("PUT A VERSION HERE");		finish(0);
 	default:	syslog(LOG_WARNING, "Bad option <%c>", rc);break;
 	}
     }

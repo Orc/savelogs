@@ -24,7 +24,7 @@ if ! AC_PROG_LEX; then
     LOG "You need lex or flex to build savelogs"
     exit 1
 fi
-
+[ "$OS_FREEBSD" -o "$OS_DRAGONFLY" ] || AC_CHECK_HEADERS malloc.h
 AC_CHECK_HEADERS getopt.h
 
 AC_SUB VERSION `test -f VERSION && cat VERSION`

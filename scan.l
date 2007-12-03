@@ -1,5 +1,6 @@
 %{
 #include <stdio.h>
+#include <string.h>
 #include "tokens.h"
 
 int line_number;
@@ -20,6 +21,7 @@ in			{ return IN; }
 size			{ return SIZE; }
 every			{ return EVERY; }
 signal			{ return SIGNAL; }
+do			{ return SIGNAL; }
 save			{ return SAVE; }
 truncate		{ return TRUNCATE; }
 days{0,1}		{ return DAYS; }

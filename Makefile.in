@@ -13,10 +13,10 @@ OBJECTS	= savelogs.o lex.yy.o
 
 target: savelogs
 
-savelogs: $(OBJECTS) tokens.h
+savelogs: $(OBJECTS) tokens.h config.h
 	$(CC) $(CFLAGS) -o savelogs $(OBJECTS)
 
-lex.yy.o: scan.l tokens.h
+lex.yy.o: scan.l tokens.h config.h
 	$(LEX) scan.l
 	$(CC) $(CFLAGS) -c lex.yy.c
 
