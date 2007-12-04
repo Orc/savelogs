@@ -12,6 +12,7 @@ extern YYSTYPE yylval;
 %}
 
 %x string
+%x qfile
 
 DIGIT	[0-9]
 FILECHR	[_\-a-zA-Z0-9\.\/]
@@ -39,7 +40,26 @@ compressed		{ return COMPRESSED; }
 #[^\n]*\n		{ line_number++; }
 \n			{ line_number++; }
 [ \t]+			{ }
-\"			{ sbp = string_buffer; BEGIN(string); }
+
+\[			{   sbp = string_buffer; BEGIN(qfile); }
+<qfile>\]		{   *sbp = 0;
+			    BEGIN(INITIAL);
+			    strcpy(yytext, string_buffer);
+			    yyleng = strlen(yytext);
+			    return PATH;
+			}
+<qfile>\"		{   *sbp = 0;
+			    BEGIN(INITIAL);
+			    yyerror("Unterminated []");
+			    strcpy(yytext, string_buffer);
+			    yyleng = strlen(yytext);
+			    line_number++;
+			    return PATH;
+			}
+<qfile>\\.		{   *sbp++ = yytext[1]; }
+<qfile>.		{   *sbp++ = yytext[0]; }
+
+\"			{   sbp = string_buffer; BEGIN(string); }
 <string>\"		{   *sbp = 0;
 			    BEGIN(INITIAL);
 			    strcpy(yytext, string_buffer);
@@ -47,7 +67,7 @@ compressed		{ return COMPRESSED; }
 			    return STRING; }
 <string>\n		{   *sbp = 0;
 			    BEGIN(INITIAL);
-			    fprintf(stderr, "Unterminated string on line %d\n", line_number);
+			    yyerror("Unterminated string");
 			    strcpy(yytext, string_buffer);
 			    yyleng = strlen(yytext);
 			    line_number++;
