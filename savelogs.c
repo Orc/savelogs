@@ -264,7 +264,7 @@ process(char *class)
 	    if (status.st_size <= p->size)
 		doit = 0;
 	    else
-		Trace(2, "%s is big enough to die (is %ld / min %ld)",
+		Trace(2, "%s is big enough to die ( %d > %d )",
 			p->path, status.st_size, p->size);
 	}
 
