@@ -9,7 +9,7 @@ CONFDIR = $(ROOT)@confdir@
 LIBDIR  = $(ROOT)@libdir@
 BINDIR  = $(ROOT)@exedir@
 
-OBJECTS	= savelogs.o lex.yy.o y.tab.o
+OBJECTS	= savelogs.o lex.yy.o y.tab.o version.o
 
 target: savelogs
 
@@ -20,13 +20,18 @@ lex.yy.o: scan.l y.tab.h config.h
 	$(LEX) scan.l
 	$(CC) $(CFLAGS) -c lex.yy.c
 
-y.tab.c y.tab.h: gram.y
+y.tab.c y.tab.h: gram.y config.h
 	$(YACC) -d gram.y
+
+version.o: VERSION config.h
+	@echo "char version[] = VERSION;" > version.c
+	$(CC) $(CFLAGS) -c version.c -DVERSION=\"`cat VERSION`\"
+	@rm -f version.c
 
 savelogs.o: savelogs.c y.tab.h config.h
 
 clean: untest
-	rm -f savelogs *.o lex.yy.c
+	rm -f savelogs *.o lex.yy.c version.c
 
 untest:
 	rm -f DEMO?

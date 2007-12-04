@@ -8,6 +8,10 @@
 
 #include "savelogs.h"
 
+extern int dotted_backup;
+extern int backup_suffix;
+extern int compress_them;
+
 extern char yytext[];
 FILE *yyin;
 
@@ -193,6 +197,7 @@ mkinterval(interval)
 %token COMMA PATH SIZE SAVE IN SIGNAL STRING
 %token NUMBER TOKEN EVERY DAY WEEK MONTH YEAR
 %token SIZE_SPECIFICATION TRUNCATE TOUCH CLASS
+%token SET DOTS SUFFIX COMPRESSED
 
 %%
 
@@ -201,6 +206,15 @@ config:		config stanza
 
 stanza:		prefix commands
 		{ mkadd(); }
+	|	SET option
+	;
+
+option:		DOTS
+		{ dotted_backup = 1; }
+	|	SUFFIX
+		{ backup_suffix = 1; }
+	|	COMPRESSED
+		{ compress_them = 1; }
 	;
 
 prefix:		PATH

@@ -18,6 +18,8 @@
  * WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTIBILITY AND
  * FITNESS FOR A PARTICULAR PURPOSE.
  */
+#include "config.h"
+
 #include <stdio.h>
 #include <fcntl.h>
 #if HAVE_GETOPT_H
@@ -40,10 +42,14 @@
 extern job_t *jobs;
 extern log_t *files;
 extern FILE *yyin;
+extern char version[];
 
 char *cfgfile = LOG_CFG;
 
 int dontdoit = 0;
+int backup_suffix = 0;	/* have backup sequence# as a suffix, not prefix */
+int dotted_backup = 0;	/* use o's for backup sequence, not #s */
+int compress_them = 0;	/* run compress on the backed-up files */
 int debug = 0;		/* debugging level, set with -d */
 int verbose = 0;	/* show progress, set with -v */
 int forced = 0;		/* rotate everything now, no matter what */
@@ -51,6 +57,39 @@ time_t now;		/* what time of day is it, for the SICK AWFUL
 			 * KLUDGE we have to use to expire things by
 			 * date
 			 */
+
+#ifndef HAVE_BASENAME
+/*
+ * basename() for systems that don't have it
+ */
+char *
+basename(char *path)
+{
+    char *p = strrchr(path, '/');
+
+    return p ? (1+p) : path;
+}
+#endif
+
+
+#ifndef HAVE_RENAME
+/*
+ * rename() for systems that don't have it
+ */
+int
+rename(char *old, char *new)
+{
+    int rc;
+
+    unlink(new);
+
+    if ( (rc = link(old,new)) == 0 )
+	unlink(old);
+
+    return rc;
+}
+#endif
+
 
 /*
  * error() tells us about some random error.
@@ -73,50 +112,6 @@ error(char *fmt, ...)
 
 
 /*
- * savelogs, in the flesh
- */
-main(int argc, char **argv)
-{
-    int rc;
-
-    openlog("savelogs", LOG_DAEMON, 0);
-    time(&now);
-
-    now /= SECSPERDAY;
-
-    while ((rc=getopt(argc, argv, "C:dfnvV")) != EOF) {
-	switch (rc) {
-	case 'n':	dontdoit++;				break;
-	case 'v':	verbose++;				break;
-	case 'd':   	debug++;				break;
-	case 'f':       forced++;				break;
-	case 'C':	cfgfile = strdup(optarg);		break;
-	case 'V':	puts("PUT A VERSION HERE");		finish(0);
-	default:	syslog(LOG_WARNING, "Bad option <%c>", rc);break;
-	}
-    }
-
-    argc -= optind;
-    argv += optind;
-
-    if ( strcmp(cfgfile, "-") == 0 )
-	yyin = stdin;
-    else if ( (yyin = fopen(cfgfile, "r")) == 0 ) {
-	error("can't open %s: %s", cfgfile, strerror(errno));
-	finish(1);
-    }
-
-    if ( yyparse() != 0 ) finish(1);
-
-    if ( debug > 1 ) printf("examine%s%s\n", argc ? " class " : " *",
-					     argc ? argv[0] : "");
-
-    examine(argc ? argv[0] : 0);
-    finish(0);
-} /* main */
-
-
-/*
  * finish() closes syslog, then exits with the given error code
  */
 finish(int status)
@@ -124,27 +119,6 @@ finish(int status)
     closelog();
     exit(status);
 } /* finish */
-
-
-/*
- * buildtemp() makes a tempfilename that lives in the same directory as
- * the file we're about to deal with
- */
-char *
-buildtemp(char *file)
-{
-    char *p;
-    char *tmp;
-
-    tmp = malloc(strlen(file)+20);
-    strcpy(tmp, file);
-
-    if (p = strrchr(tmp, '/'))
-	sprintf(++p, "SAVE.%04x", getpid());
-    else
-	sprintf(tmp, "SAVE.%04x", getpid());
-    return tmp;
-} /* buildtemp */
 
 
 static void
@@ -175,9 +149,11 @@ dumplog_t(log_t *p)
     if (p->backup) {
 	if (p->backup->count == 0)
 	    printf("\tTRUNCATE\n");
-	else
-	    printf("\tSAVE %d IN %s\n",
-		p->backup->count, p->backup->dir);
+	else {
+	    printf("\tSAVE %d IN %s",
+		p->backup->count, p->backup->dir); 
+	    putchar('\n');
+	}
     }
     if (p->touch)
 	printf("\tTOUCH %o\n", p->touch);
@@ -202,8 +178,15 @@ examine(char *class)
     char *workfile;
     int doit;
 
-    if (debug > 2)
+    if (debug > 2) {
+	if ( dotted_backup )
+	    printf("SET DOTS\n");
+	if ( backup_suffix )
+	    printf("SET SUFFIX\n");
+	if ( compress_them )
+	    printf("SET COMPRESSED\n");
 	dumplog_t(files);
+    }
 
     /* get the current time so we can do interval checks
      */
@@ -331,6 +314,33 @@ examine(char *class)
 
 
 /*
+ * backup_file() generates the name of a backup file
+ */
+void
+backup_file(char *dest, char *dir, int backup, char *file, int compressed)
+{
+    char *dots = "ooooooooooooooo";
+
+    if ( backup_suffix ) {
+	if ( dotted_backup )
+	    sprintf(dest, "%s/%s.%.*s", dir, file, backup+1, dots);
+	else
+	    sprintf(dest, "%s/%s.%d", dir, file, backup);
+    }
+    else {
+	if ( dotted_backup )
+	    sprintf(dest, "%s/%.*s.%s", dir, backup+1, dots, file);
+	else
+	    sprintf(dest, "%s/%d.%s", dir, backup, file);
+    }
+#ifdef ZEXT
+    if ( compressed )
+	strcat(dest, ZEXT);
+#endif
+}
+
+
+/*
  * pushback() pushes back all of the archived copies of the file
  */
 void
@@ -348,21 +358,14 @@ pushback(log_t *f)
     siz = strlen(f->backup->dir) + 1;
 
     for (i=f->backup->count-1; i>0 ; --i) {
-	sprintf(to,   "%s/%d.%s", f->backup->dir, i, bn);
-	sprintf(from, "%s/%d.%s", f->backup->dir, i-1, bn);
+
+	backup_file(to, f->backup->dir, i, bn, compress_them);
+	backup_file(from, f->backup->dir, i-1, bn, compress_them);
 
 	if (debug > 2)
 	    printf("%s -> %s\n", from, to);
 
-	if ( dontdoit ) continue;
-
-#if HAVE_RENAME
-	rename(from, to);
-#else
-	unlink(to);
-	link(from,to);
-	unlink(from);
-#endif
+	if ( !dontdoit ) rename(from, to);
     }
 } /* pushback */
 
@@ -384,48 +387,114 @@ Archive(log_t *f)
 
     arcf = alloca(strlen(f->backup->dir) + strlen(bn) + 20);
 
-    sprintf(arcf, "%s/0.%s", f->backup->dir, bn);
+    backup_file(arcf, f->backup->dir, 0, bn, 0);
 
     /* try to rename the file into the archive
      */
 
     if ( debug > 2 ) printf("%s -> %s\n", f->path, arcf);
-    if ( dontdoit ) return; 
-#if HAVE_RENAME
-    rc = rename(f->path, arcf);
-#else
-    unlink(arcf);
-    rc = link(f->path, arcf);
-    if ( rc == 0 )
-	unlink(f->path);
+
+    if ( !dontdoit )  {
+	if ( rename(f->path, arcf) == -1 ) {
+	    if ( errno != EXDEV ) {
+		error("could not rename %s to %s: %s",
+		    f->path, arcf, strerror(errno));
+		return;
+	    }
+
+	    if ( (ffd = open(f->path, O_RDONLY)) == -1 ) {
+		error("can't open %s: %s", f->path, strerror(errno));
+		return;
+	    }
+
+	    if ( fstat(ffd, &st) == -1 ) mode = 0400;
+	    else mode = st.st_mode;
+
+	    unlink(f->path);
+
+	    if ( (tfd = open(arcf, O_WRONLY|O_CREAT|O_TRUNC, mode)) == -1 ) {
+		error("can't create %s: %s", arcf, strerror(errno));
+		close(ffd);
+		return;
+	    }
+
+	    while ( (size=read(ffd, ftext, sizeof ftext)) > 0 ) 
+		write(tfd, ftext, size);
+
+	    close(ffd);
+	    close(tfd);
+	}
+    }
+
+#ifdef ZEXT
+    if ( compress_them ) {
+	char *squash = alloca(sizeof PATH_COMPRESS + strlen(arcf) + 4);
+
+	sprintf(squash, "%s %s", PATH_COMPRESS, arcf);
+
+	if ( debug > 2 )
+	    printf("compress %s\n", arcf);
+	if ( !dontdoit )
+	    system(squash);
+    }
 #endif
-
-    if ( rc == 0 ) return;
-
-    if ( errno != EXDEV ) {
-	error("could not rename %s to %s: %s",
-	    f->path, arcf, strerror(errno));
-	return;
-    }
-
-    if ( (ffd = open(f->path, O_RDONLY)) == -1 ) {
-	error("can't open %s: %s", f->path, strerror(errno));
-	return;
-    }
-    if ( fstat(ffd, &st) == -1 ) mode = 0400;
-    else mode = st.st_mode;
-    unlink(f->path);
-
-    if ( (tfd = open(arcf, O_WRONLY|O_CREAT|O_TRUNC, mode)) == -1 ) {
-	error("can't create %s: %s", arcf, strerror(errno));
-	close(ffd);
-	return;
-    }
-
-    while ( (size=read(ffd, ftext, sizeof ftext)) > 0 ) 
-	write(tfd, ftext, size);
-
-    close(ffd);
-    close(tfd);
-
 } /* Archive */
+
+
+/*
+ * savelogs, in the flesh
+ */
+main(int argc, char **argv)
+{
+    int rc;
+
+    openlog("savelogs", LOG_DAEMON, 0);
+    time(&now);
+
+    now /= SECSPERDAY;
+
+    while ((rc=getopt(argc, argv, "C:dfnvV")) != EOF) {
+	switch (rc) {
+	case 'n':
+		dontdoit++;
+		break;
+	case 'v':
+		verbose++;
+		break;
+	case 'd':
+		debug++;
+		break;
+	case 'f':
+		forced++;
+		break;
+	case 'C':
+		cfgfile = strdup(optarg);
+		break;
+	case 'V':
+		puts(version);
+		finish(0);
+	default:if ( isatty(fileno(stdout)) ) {
+		    fprintf(stderr, "unknown option <%c>\n", optopt);
+		    exit(1);
+		}
+	}
+    }
+
+    argc -= optind;
+    argv += optind;
+
+    if ( strcmp(cfgfile, "-") == 0 )
+	yyin = stdin;
+    else if ( (yyin = fopen(cfgfile, "r")) == 0 ) {
+	error("can't open %s: %s", cfgfile, strerror(errno));
+	finish(1);
+    }
+
+    if ( yyparse() != 0 ) finish(1);
+
+    if ( debug > 1 ) printf("examine%s%s\n", argc ? " class " : " *",
+					     argc ? argv[0] : "");
+
+    examine(argc ? argv[0] : 0);
+    finish(0);
+} /* main */

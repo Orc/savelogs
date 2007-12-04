@@ -32,6 +32,10 @@ months{0,1}		{ return MONTH; }
 years{0,1}		{ return YEAR; }
 touch			{ return TOUCH; }
 class			{ return CLASS; }
+set			{ return SET; }
+dots			{ return DOTS; }
+suffix			{ return SUFFIX; }
+compressed		{ return COMPRESSED; }
 #[^\n]*\n		{ line_number++; }
 \n			{ line_number++; }
 [ \t]+			{ }

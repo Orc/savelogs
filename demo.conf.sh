@@ -1,3 +1,7 @@
+set suffix
+set dots
+set compressed
+
 @HERE@/DEMO1	size=200k,
 			class="daily",
 			save 3 in @HERE@/OLD,
@@ -6,8 +10,8 @@
 
 @HERE@/DEMO2	size(200k)
 			class("weekly")
-		#	save(3) in(@HERE@/OLD)
 			truncate
+# 			save(3) in (@HERE@/OLD)
 			signal("echo \"hello, world\"")
 			signal("echo hello,sailor")
 
