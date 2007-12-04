@@ -40,7 +40,7 @@ typedef struct _backup_t {
 typedef struct _log_t {
     char *path;		/* the file we're administering */
     char *class;	/* log maintenance class */
-    unsigned long size;	/* roll out if larger than this size */
+    size_t size;	/* roll out if larger than this size */
     backup_t* backup;	/* backup to directory?  how many times? */
     int interval;	/* how often to roll out the barrel */
     int touch;		/* manually create the file with given mode */

@@ -13,14 +13,14 @@ OBJECTS	= savelogs.o lex.yy.o y.tab.o version.o
 
 target: savelogs
 
-savelogs: $(OBJECTS) y.tab.h config.h
+savelogs: $(OBJECTS) y.tab.h config.h savelogs.h
 	$(CC) $(CFLAGS) -o savelogs $(OBJECTS)
 
-lex.yy.o: scan.l y.tab.h config.h
+lex.yy.o: scan.l y.tab.h config.h savelogs.h
 	$(LEX) scan.l
 	$(CC) $(CFLAGS) -c lex.yy.c
 
-y.tab.c y.tab.h: gram.y config.h
+y.tab.c y.tab.h: gram.y config.h savelogs.h
 	$(YACC) -d gram.y
 
 version.o: VERSION config.h

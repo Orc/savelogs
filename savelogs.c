@@ -141,14 +141,17 @@ finish(int status)
 } /* finish */
 
 
+/*
+ * recursively print all of the log_t entries in a linked list.
+ */
 static void
-dumplog_t(log_t *p)
+printfiles(log_t *p)
 {
     int i;
 
     if ( p == 0 ) return;
 
-    dumplog_t(p->next);
+    printfiles(p->next);
 
     printf("%s\n", p->path);
     if (p->class)
@@ -184,17 +187,96 @@ dumplog_t(log_t *p)
 
 
 /*
+ * process a single job_t
+ */
+void
+onejob(log_t *p, char *class, time_t now)
+{
+    struct stat st;
+    int i;
+
+    if ( class && ((p->class == 0) || (strcasecmp(class, p->class) != 0)) )
+	return;
+
+    if ( stat(p->path, &st) == -1 ) {
+	Trace(2, "Cannot stat %s", p->path);
+	return;
+    }
+    if ( !S_ISREG(st.st_mode) ) {
+	Trace(2, "%s is not a regular file", p->path);
+	return;
+    }
+
+    if ( p->interval && !forced ) {
+	if (st.st_ctime == now)
+	    return;
+	else {
+	    struct tm tnow, tfile, *tp;
+
+	    if ( tp = localtime(&now) )
+		memcpy(&tnow, tp, sizeof *tp);
+	    if ( tp = localtime(&st.st_ctime) )
+		memcpy(&tfile, tp, sizeof *tp);
+
+	    switch (p->interval) {
+	    case YEAR:  if ( tfile.tm_year == tnow.tm_year )
+			    return;
+			else
+	    case MONTH: if ( tfile.tm_mon == tnow.tm_mon )
+			    return;
+			else
+	    case WEEK:  if ( (tfile.tm_yday % 7) != (tnow.tm_yday % 7) )
+			    return;
+			else
+	    case DAY:   if ( tfile.tm_yday != tnow.tm_yday )
+			    return;
+	    }
+	}
+	Trace(2, "%s is old enough to die", p->path);
+    }
+
+    if ( p->size && !forced ) {
+	if (st.st_size < p->size)
+	    return;
+
+	Trace(2, "%s is big enough to die ( %d > %d )",
+		    p->path, st.st_size, p->size);
+    }
+
+    Trace(0, "Processing %s", p->path);
+
+    for (i = 0; i < NR(p->jobs); i++)
+	IT(p->jobs,i)->active++;
+
+    if ( p->backup ) {
+	if ( p->backup->count )
+	    Archive(p);
+	if ( doitnow )
+	    truncate(p->path, 0L);
+    }
+
+    if ( p->touch ) {
+	Trace(1, "touch [%o] %s", p->touch, p->path);
+
+	if ( doitnow ) {
+	    unlink(p->path);
+	    if ( (i = creat(p->path, p->touch)) != -1 )
+		close(i);
+	    else
+		error("touch %s: %s", p->path, strerror(errno));
+	}
+    }
+}
+
+
+/*
  * process() looks at all of the offending files
  */
 int
 process(char *class)
 {
-    int x, rc, i;
-    int any_class_is_valid = 0;
     log_t *p;
     job_t *sig;
-    struct stat status;
-    struct stat direct;
     char *workfile;
     int doit;
 
@@ -205,100 +287,14 @@ process(char *class)
 	    printf("SET SUFFIX\n");
 	if ( compress_them )
 	    printf("SET COMPRESSED\n");
-	dumplog_t(files);
+	printfiles(files);
     }
 
-    /* get the current time so we can do interval checks
-     */
     time(&now);
 
-    /*
-     * walk the victim list, picking out likely candidates
-     */
-    for (p = files; p; p = p->next) {
+    for (p = files; p; p = p->next)
+	onejob(p, class, now);
 
-	doit = (class == 0) || (p->class && (strcasecmp(class, p->class) == 0));
-
-	if ( !doit ) continue;
-
-
-	rc = stat(p->path, &status);
-
-	if (rc < 0) {
-	    Trace(2, "Cannot stat %s", p->path);
-	    continue;
-	}
-	if ((status.st_mode & S_IFREG) == 0) {
-	    Trace(2, "%s is not a regular file", p->path);
-	    continue;
-	}
-
-	if ( p->interval ) {
-	    if (status.st_ctime == now)
-		doit = 0;
-	    else {
-		struct tm tnow, tfile, *tp;
-
-		if ( tp = localtime(&now) )
-		    memcpy(&tnow, tp, sizeof *tp);
-		if ( tp = localtime(&status.st_ctime) )
-		    memcpy(&tfile, tp, sizeof *tp);
-
-		switch (p->interval) {
-		case YEAR:  if ( tfile.tm_year == tnow.tm_year )
-				doit = 0;
-			    else
-		case MONTH: if ( tfile.tm_mon == tnow.tm_mon )
-				doit = 0;
-			    else
-		case WEEK:  if ( (tfile.tm_yday % 7) != (tnow.tm_yday % 7) )
-				doit = 0;
-			    else
-		case DAY:   if ( tfile.tm_yday != tnow.tm_yday )
-				doit = 0;
-		}
-	    }
-	    if ( doit ) Trace(2, "%s is old enough to die", p->path);
-	}
-	if (p->size > 0) {
-	    if (status.st_size <= p->size)
-		doit = 0;
-	    else
-		Trace(2, "%s is big enough to die ( %d > %d )",
-			p->path, status.st_size, p->size);
-	}
-
-	if ( !(doit||forced) )
-	    continue;
-
-	Trace(0, "Processing %s", p->path);
-
-	for (i = 0; i < NR(p->jobs); i++)
-	    IT(p->jobs,i)->active++;
-
-	if ( p->backup ) {
-	    if ( p->backup->count == 0 ) {
-		if ( doitnow ) truncate(p->path, 0L);
-	    }
-	    else
-		Archive(p);
-	}
-	if ( p->touch ) {
-	    Trace(1, "touch [%o] %s", p->touch, p->path);
-
-	    if ( doitnow ) {
-		unlink(p->path);
-		if ( (i = creat(p->path, p->touch)) != -1 )
-		    close(i);
-		else
-		    error("touch %s: %s", p->path, strerror(errno));
-	    }
-	}
-    }
-    /*
-     * After shuffling files around, go back through and do all the signalling
-     * we need to do
-     */
     for (sig = jobs; sig; sig = sig->next)
 	if (sig->active) {
 	    Trace(3, "firing ``%s'' (%d request%s)",
