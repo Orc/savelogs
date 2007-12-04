@@ -264,7 +264,7 @@ process(char *class)
 	    if (status.st_size <= p->size)
 		doit = 0;
 	    else
-		Trace(2, "%s is big enough to die (is %ld / min %ld)\n",
+		Trace(2, "%s is big enough to die (is %ld / min %ld)",
 			p->path, status.st_size, p->size);
 	}
 
@@ -488,7 +488,7 @@ main(int argc, char **argv)
 
     if ( yyparse() != 0 ) finish(1);
 
-    Trace(1, "process%s%s\n", argc ? " class " : " *", argc ? argv[0] : "");
+    Trace(1, "process%s%s", argc ? " class " : " *", argc ? argv[0] : "");
 
     process(argc ? argv[0] : 0);
     finish(0);
