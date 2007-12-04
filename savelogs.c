@@ -23,11 +23,14 @@
 #include <stdio.h>
 #include <fcntl.h>
 #if HAVE_GETOPT_H
-#   include <getopt.h>
+# include <getopt.h>
 #endif
 #include <string.h>
 #if HAVE_MALLOC_H
-#include <malloc.h>
+# include <malloc.h>
+#endif
+#if HAVE_LIBGEN_H
+# include <libgen.h>
 #endif
 #include <stdlib.h>
 #include <stdarg.h>
@@ -214,6 +217,11 @@ process(char *class)
      */
     for (p = files; p; p = p->next) {
 
+	doit = (class == 0) || (p->class && (strcasecmp(class, p->class) == 0));
+
+	if ( !doit ) continue;
+
+
 	rc = stat(p->path, &status);
 
 	if (rc < 0) {
@@ -224,14 +232,6 @@ process(char *class)
 	    Trace(2, "%s is not a regular file", p->path);
 	    continue;
 	}
-
-	/* Check if we're actually planning on processing this
-	 * entry today
-	 */
-
-	doit = (class == 0) || (strcasecmp(class, p->class) == 0);
-
-	if ( !doit ) continue;
 
 	if ( p->interval ) {
 	    if (status.st_ctime == now)

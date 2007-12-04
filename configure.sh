@@ -28,7 +28,7 @@ esac
 
 [ "$OS_FREEBSD" -o "$OS_DRAGONFLY" ] || AC_CHECK_HEADERS malloc.h
 AC_CHECK_HEADERS getopt.h
-AC_CHECK_FUNCS basename
+AC_CHECK_FUNCS basename && AC_CHECK_HEADERS libgen.h
 AC_CHECK_FUNCS rename
 
 AC_DEFINE DEFAULT_CONFIG	\"$AC_CONFDIR/savelogs.conf\"
