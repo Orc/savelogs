@@ -25,15 +25,18 @@ y.tab.c y.tab.h: gram.y
 
 savelogs.o: savelogs.c y.tab.h config.h
 
-clean:
-	rm -f savelogs *.o lex.yy.c DEMO?
+clean: untest
+	rm -f savelogs *.o lex.yy.c
+
+untest:
+	rm -f DEMO?
 	rm -rf OLD
 
 distclean spotless: clean
 	rm -f config.* Makefile savelogs.8
 
 
-test demo: savelogs
+test demo: savelogs untest
 	-mkdir OLD
 	for file in DEMO1 DEMO2 DEMO3 DEMO4 DEMO5; do \
 	    dd if=/dev/zero of=$$file count=201 bs=1024 >/dev/null; \
