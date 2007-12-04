@@ -363,8 +363,10 @@ pushback(log_t *f, int level)
     if ( stat(to, &st) == 0 )
 	pushback(f, level+1);
 
-    Trace(2, "%s -> %s", from, to);
-    if ( doitnow ) rename(from, to);
+    if ( stat(from, &st) == 0 ) {
+	Trace(2, "%s -> %s", from, to);
+	if ( doitnow ) rename(from, to);
+    }
 } /* pushback */
 
 
