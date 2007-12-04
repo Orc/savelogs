@@ -9,6 +9,7 @@
 .Op Fl dfv
 .Op Fl V
 .Op Fl C Pa config-file
+.Op class
 .Sh DESCRIPTION
 The
 .Nm
@@ -49,6 +50,9 @@ size with
 the size is in kilobytes, and a
 .Ar M
 suffix means megabytes.
+.It CLASS Dq class
+This file is backed up in
+.Ar class .
 .It SIGNAL Dq action
 After rotating a log and 
 .Ar TOUCH Ns No ing
