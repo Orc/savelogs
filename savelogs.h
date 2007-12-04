@@ -1,7 +1,5 @@
 #include "y.tab.h"
 
-#define LOG_CFG "/etc/savelogs.conf"
-
 #define SECSPERDAY	24*60*60	/* how many seconds in a day */
 
 /*
@@ -47,6 +45,7 @@ typedef struct _log_t {
     int interval;	/* how often to roll out the barrel */
     int touch;		/* manually create the file with given mode */
     ARY(job_t*) jobs;	/* things to do when backup fires */
+    long barrier;
     struct _log_t *next;/* next in chain */
 } log_t;
 

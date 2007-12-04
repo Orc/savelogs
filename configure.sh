@@ -31,7 +31,7 @@ AC_CHECK_HEADERS getopt.h
 AC_CHECK_FUNCS basename
 AC_CHECK_FUNCS rename
 
-AC_SUB VERSION `test -f VERSION && cat VERSION`
+AC_DEFINE DEFAULT_CONFIG	\"$AC_CONFDIR/savelogs.conf\"
 
 AC_OUTPUT savelogs.8 Makefile
 

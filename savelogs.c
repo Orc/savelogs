@@ -44,14 +44,14 @@ extern log_t *files;
 extern FILE *yyin;
 extern char version[];
 
-char *cfgfile = LOG_CFG;
+char *cfgfile = DEFAULT_CONFIG;
+char *pgm;
 
-int dontdoit = 0;
+int doitnow = 1;
 int backup_suffix = 0;	/* have backup sequence# as a suffix, not prefix */
 int dotted_backup = 0;	/* use o's for backup sequence, not #s */
 int compress_them = 0;	/* run compress on the backed-up files */
 int debug = 0;		/* debugging level, set with -d */
-int verbose = 0;	/* show progress, set with -v */
 int forced = 0;		/* rotate everything now, no matter what */
 time_t now;		/* what time of day is it, for the SICK AWFUL
 			 * KLUDGE we have to use to expire things by
@@ -100,15 +100,32 @@ error(char *fmt, ...)
     va_list ptr;
 
     va_start(ptr, fmt);
-
-    if (debug > 2) {
-	printf("savelogs: ");
-	vprintf(fmt, ptr);
-	putchar('\n');
+    if ( (debug > 2) || isatty(fileno(stdout)) ) {
+	fprintf(stderr, "%s: ", pgm);
+	vfprintf(stderr, fmt, ptr);
+	fputc('\n', stderr);
     }
     else
 	vsyslog(LOG_ERR, fmt, ptr);
+    va_end(ptr);
 } /* error */
+
+
+/*
+ * Trace() does debug logging
+ */
+void
+Trace(int level, char *fmt, ...)
+{
+    va_list ptr;
+
+    va_start(ptr,fmt);
+    if (debug >= level) {
+	vfprintf(stderr, fmt, ptr);
+	fputc('\n', stderr);
+    }
+    va_end(ptr);
+}
 
 
 /*
@@ -116,7 +133,7 @@ error(char *fmt, ...)
  */
 finish(int status)
 {
-    closelog();
+    if ( !isatty(fileno(stdout)) ) closelog();
     exit(status);
 } /* finish */
 
@@ -164,10 +181,10 @@ dumplog_t(log_t *p)
 
 
 /*
- * examine() looks at all of the offending files
+ * process() looks at all of the offending files
  */
 int
-examine(char *class)
+process(char *class)
 {
     int x, rc, i;
     int any_class_is_valid = 0;
@@ -178,7 +195,7 @@ examine(char *class)
     char *workfile;
     int doit;
 
-    if (debug > 2) {
+    if ( debug ) {
 	if ( dotted_backup )
 	    printf("SET DOTS\n");
 	if ( backup_suffix )
@@ -200,12 +217,11 @@ examine(char *class)
 	rc = stat(p->path, &status);
 
 	if (rc < 0) {
-	    if (debug > 2)
-		error("Cannot stat %s", p->path);
+	    Trace(2, "Cannot stat %s", p->path);
 	    continue;
 	}
 	if ((status.st_mode & S_IFREG) == 0) {
-	    error("%s is not a regular file", p->path);
+	    Trace(2, "%s is not a regular file", p->path);
 	    continue;
 	}
 
@@ -215,15 +231,7 @@ examine(char *class)
 
 	doit = (class == 0) || (strcasecmp(class, p->class) == 0);
 
-	if ( !doit ) {
-	    if ( debug > 2 ) {
-		printf("Skipping %s", p->path);
-		if (p->class)
-		    printf(" (class %s)", p->class);
-		putchar('\n');
-	    }
-	    continue;
-	}
+	if ( !doit ) continue;
 
 	if ( p->interval ) {
 	    if (status.st_ctime == now)
@@ -250,48 +258,41 @@ examine(char *class)
 				doit = 0;
 		}
 	    }
-	    if ( debug > 2 )
-		if ( doit )
-		    printf("%s is old enough to die\n", p->path);
-		else
-		    printf("%s will live another day\n", p->path);
+	    if ( doit ) Trace(2, "%s is old enough to die", p->path);
 	}
 	if (p->size > 0) {
-	    if (status.st_size <= p->size) {
-		if (debug > 2)
-		    printf("%s is too small to be processed\n",
-			    p->path);
+	    if (status.st_size <= p->size)
 		doit = 0;
-	    }
-	    else {
-		if (debug > 2)
-		    printf("%s is big enough to die (%ld/%ld)\n",
-			    p->path, status.st_size, p->size);
-	    }
+	    else
+		Trace(2, "%s is big enough to die (is %ld / min %ld)\n",
+			p->path, status.st_size, p->size);
 	}
 
 	if ( !(doit||forced) )
 	    continue;
 
-	if (debug || verbose)
-	    printf("Processing %s\n", p->path);
+	Trace(0, "Processing %s", p->path);
 
 	for (i = 0; i < NR(p->jobs); i++)
 	    IT(p->jobs,i)->active++;
 
 	if ( p->backup ) {
 	    if ( p->backup->count == 0 ) {
-		if ( !dontdoit ) truncate(p->path, 0L);
+		if ( doitnow ) truncate(p->path, 0L);
 	    }
 	    else
 		Archive(p);
 	}
 	if ( p->touch ) {
-	    unlink(p->path);
-	    if ( (i = creat(p->path, p->touch)) != -1 )
-		close(i);
-	    else
-		error("touch %s: %s", p->path, strerror(errno));
+	    Trace(1, "touch [%o] %s", p->touch, p->path);
+
+	    if ( doitnow ) {
+		unlink(p->path);
+		if ( (i = creat(p->path, p->touch)) != -1 )
+		    close(i);
+		else
+		    error("touch %s: %s", p->path, strerror(errno));
+	    }
 	}
     }
     /*
@@ -300,38 +301,34 @@ examine(char *class)
      */
     for (sig = jobs; sig; sig = sig->next)
 	if (sig->active) {
-	    if (debug > 2) {
-		printf("(%d)", sig->active);
-		fflush(stdout);
-	    }
-	    if ( dontdoit || (debug > 3) )
-		printf("firing [%s]\n", sig->command);
-	    if ( !dontdoit )
+	    Trace(3, "firing ``%s'' (%d request%s)",
+			sig->command, sig->active, (sig->active==1)?"":"s");
+	    if ( doitnow )
 		system(sig->command);
 	    sig->active = 0;
 	}
-} /* examine */
+} /* process */
 
 
 /*
- * backup_file() generates the name of a backup file
+ * bkupname() generates the name of a backup file
  */
 void
-backup_file(char *dest, char *dir, int backup, char *file, int compressed)
+bkupname(char *dest, char *dir, int age, char *file, int compressed)
 {
     char *dots = "ooooooooooooooo";
 
     if ( backup_suffix ) {
 	if ( dotted_backup )
-	    sprintf(dest, "%s/%s.%.*s", dir, file, backup+1, dots);
+	    sprintf(dest, "%s/%s.%*.*s", dir, file, age+1, age+1, dots);
 	else
-	    sprintf(dest, "%s/%s.%d", dir, file, backup);
+	    sprintf(dest, "%s/%s.%d", dir, file, age);
     }
     else {
 	if ( dotted_backup )
-	    sprintf(dest, "%s/%.*s.%s", dir, backup+1, dots, file);
+	    sprintf(dest, "%s/%*.*s.%s", dir, age+1, age+1, dots, file);
 	else
-	    sprintf(dest, "%s/%d.%s", dir, backup, file);
+	    sprintf(dest, "%s/%d.%s", dir, age, file);
     }
 #ifdef ZEXT
     if ( compressed )
@@ -344,11 +341,14 @@ backup_file(char *dest, char *dir, int backup, char *file, int compressed)
  * pushback() pushes back all of the archived copies of the file
  */
 void
-pushback(log_t *f)
+pushback(log_t *f, int level)
 {
     char *to, *from;
     char *bn = basename(f->path);
     int i, siz;
+    struct stat st;
+
+    if ( level >= f->backup->count ) return;
 
     siz = strlen(f->backup->dir) + strlen(bn) + 20;
 
@@ -357,16 +357,14 @@ pushback(log_t *f)
 
     siz = strlen(f->backup->dir) + 1;
 
-    for (i=f->backup->count-1; i>0 ; --i) {
+    bkupname(to, f->backup->dir, level+1, bn, compress_them);
+    bkupname(from, f->backup->dir, level, bn, compress_them);
 
-	backup_file(to, f->backup->dir, i, bn, compress_them);
-	backup_file(from, f->backup->dir, i-1, bn, compress_them);
+    if ( stat(to, &st) == 0 )
+	pushback(f, level+1);
 
-	if (debug > 2)
-	    printf("%s -> %s\n", from, to);
-
-	if ( !dontdoit ) rename(from, to);
-    }
+    Trace(2, "%s -> %s", from, to);
+    if ( doitnow ) rename(from, to);
 } /* pushback */
 
 
@@ -383,18 +381,18 @@ Archive(log_t *f)
     struct stat st;
     int rc, mode, size;
 
-    pushback(f);
+    pushback(f, 0);
 
     arcf = alloca(strlen(f->backup->dir) + strlen(bn) + 20);
 
-    backup_file(arcf, f->backup->dir, 0, bn, 0);
+    bkupname(arcf, f->backup->dir, 0, bn, 0);
 
     /* try to rename the file into the archive
      */
 
-    if ( debug > 2 ) printf("%s -> %s\n", f->path, arcf);
+    Trace(2, "%s -> %s", f->path, arcf);
 
-    if ( !dontdoit )  {
+    if ( doitnow )  {
 	if ( rename(f->path, arcf) == -1 ) {
 	    if ( errno != EXDEV ) {
 		error("could not rename %s to %s: %s",
@@ -432,9 +430,8 @@ Archive(log_t *f)
 
 	sprintf(squash, "%s %s", PATH_COMPRESS, arcf);
 
-	if ( debug > 2 )
-	    printf("compress %s\n", arcf);
-	if ( !dontdoit )
+	Trace(2, "compress %s", arcf);
+	if ( doitnow )
 	    system(squash);
     }
 #endif
@@ -448,19 +445,21 @@ main(int argc, char **argv)
 {
     int rc;
 
-    openlog("savelogs", LOG_DAEMON, 0);
+    argv[0] = pgm = basename(argv[0]);
+
     time(&now);
 
     now /= SECSPERDAY;
 
+    if ( isatty(fileno(stdout)) ) opterr++;
+    else openlog("savelogs", LOG_DAEMON, 0);
+
     while ((rc=getopt(argc, argv, "C:dfnvV")) != EOF) {
 	switch (rc) {
 	case 'n':
-		dontdoit++;
+		doitnow = 0;
 		break;
 	case 'v':
-		verbose++;
-		break;
 	case 'd':
 		debug++;
 		break;
@@ -473,10 +472,7 @@ main(int argc, char **argv)
 	case 'V':
 		puts(version);
 		finish(0);
-	default:if ( isatty(fileno(stdout)) ) {
-		    fprintf(stderr, "unknown option <%c>\n", optopt);
-		    exit(1);
-		}
+	default:if ( isatty(fileno(stdout)) ) finish(1);
 	}
     }
 
@@ -492,9 +488,8 @@ main(int argc, char **argv)
 
     if ( yyparse() != 0 ) finish(1);
 
-    if ( debug > 1 ) printf("examine%s%s\n", argc ? " class " : " *",
-					     argc ? argv[0] : "");
+    Trace(1, "process%s%s\n", argc ? " class " : " *", argc ? argv[0] : "");
 
-    examine(argc ? argv[0] : 0);
+    process(argc ? argv[0] : 0);
     finish(0);
 } /* main */

@@ -34,19 +34,23 @@ clean: untest
 	rm -f savelogs *.o lex.yy.? version.c y.tab.?
 
 untest:
-	rm -f DEMO?
+	rm -f DEMO? demo.conf
 	rm -rf OLD
 
 distclean spotless: clean
 	rm -f config.* Makefile savelogs.8
 
-
-test demo: savelogs untest
+preptest: untest
 	-mkdir OLD
 	for file in DEMO1 DEMO2 DEMO3 DEMO4 DEMO5; do \
 	    dd if=/dev/zero of=$$file count=201 bs=1024 >/dev/null; \
 	done
-	@SED@ -e "s~@HERE@~`pwd`~g" < demo.conf.sh | ./savelogs -dddC -
+
+demo.conf: preptest
+	@SED@ -e "s~@HERE@~`pwd`~g" < demo.conf.sh > demo.conf
+
+test demo: savelogs preptest demo.conf
+	./savelogs -ddd -C demo.conf
 	@echo -n "test DEMO1..."; test ! -r DEMO1 && echo "ok" || echo "failed"
 	@echo -n "test DEMO2..."; test -r DEMO2 && echo "ok" || echo "failed"
 	@echo -n "test DEMO3..."; test -r DEMO3 && echo "ok" || echo "failed"
