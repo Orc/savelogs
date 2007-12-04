@@ -1,123 +1,128 @@
-.TH SAVELOGS 8 "" "%E%" "Version @VERSION@"
-.SH NAME
-savelogs \- rotate logs
-.SH SYNOPSIS
-savelogs
-.RI [ -dfv ]
-.RI [ -V ]
-.RI [ -C " config-file]"
-.SH DESCRIPTION
+.Dd December 4, 2007
+.Dt SAVELGOS 8
+.Os MASTODON 4
+.Sh NAME
+.Nm savelogs
+.Nd rotate logfiles
+.Sh SYNOPSIS
+.Nm
+.Op Fl dfv
+.Op Fl V
+.Op Fl C Pa config-file
+.Sh DESCRIPTION
 The
-.B savelogs
+.Nm
 program rotates logs, optionally saving the old ones elsewhere and
 signalling the programs that created the logfiles.
 
-.SH THE CONFIGURATION FILE
-.I /etc/savelogs.conf
+.Sh THE CONFIGURATION FILE
+.Pa /etc/savelogs.conf
 tells
-.B savelogs
+.Nm
 which logs to rotate, when to rotate them, whether to back them up,
-and what to do after a log is rotated.   The format of the configuration
+and what to do after a log is rotated.  The configuration file
+also allows you to configure how backup files are named and whether
+they are compressed.
+.Pp
+A file description is
 file is a
-.BR filename ,
+.Pa filename ,
 followed by a list of commands, with punctuation and case ignored.
-.TP
-.BI EVERY " DAY|WEEK|YEAR"
-Rotate the log at this time.  If you tell it 
-.BR WEEK " (" YEAR "),"
-the rotation will happen on a sunday 
-(the last sunday of the year).  
-.TP
-.BI SAVE " n " IN " directory"
+.Bl -tag -width "THIS IS A TEST OK"
+.It EVERY Bq DAY|WEEK|MONTH|YEAR
+Rotate the log at this time.
+.It SAVE Ar n IN Pa directory
 Save
-.I n
-old logs in the named directory as
-.BI o. log\fR.
-Previously existing
-files will be renamed to
-.BI o file
-to accomodate the new file (so the old
-.I o.log
-becomes 
-.IR oo.log ,
-and so on), up to the number 
-of files you want to save.
-.TP
-.BI TOUCH " mode"
+.Ar n
+old logs in the named directory.
+Previously existing files will be renamed to
+accomodate the new file up to the number 
+of files you want to save.   Backup file names are the filename
+prefixed with a number counting from zero up.
+.It TOUCH Ar mode
 After rotating the old log, create a new (empty) log with the given
-.IR mode .
-.TP
-.BI SIZE " size"
+.Ar mode .
+.It SIZE Ar size
 Rotate the log if it gets larger than this size.  If you suffix the
 size with 
-.BR K ,
+.Ar K ,
 the size is in kilobytes, and a
-.B M
+.Ar M
 suffix means megabytes.
-.TP
-.BI SIGNAL " action"
+.It SIGNAL Dq action
 After rotating a log and 
-.BR TOUCH ing
+.Ar TOUCH Ns No ing
 it, run this command.
-.B savelogs
+.Nm
 attempts to batch 
-.BR SIGNAL ,
+.Ar SIGNAL Ns No s ,
 so that if multiple logs are rotated the actions will only be executed
 once.
-.PP
+.Pp
 For example, the following configuration file
-
 .nf
 /var/adm/syslog EVERY WEEK
                 SAVE 2 IN /var/adm/OLD
                 TOUCH 644
                 SIGNAL "killall -HUP syslogd"
 .fi
-
-.PP
 Rotates
-.I /var/adm/syslog
-every sunday, creating a new empty file with mode 644, saving two of the
+.Pa /var/adm/syslog
+every week, creating a new empty file with mode 644, saving two of the
 old logs in
-.IR /var/adm/OLD ,
+.Pa /var/adm/OLD ,
 and sending a 
-.B HUP
+.Ar HUP
 signal to
-.I syslogd
+.Xr syslogd 1
 after it's finished.
-
-
-.SH OPTIONS
-.TP
-.I \-V
+.El
+.Pp
+To configure how backups are named and whether they are compressed,
+use the
+.Em SET Ar option
+command.   The following options are defined:
+.Bl -tag -width compressed
+.It Ar dots
+Instead of using a revision number, prefix each backup file with
+.Dq o 's,
+where the older ones have more dots than the newer ones do.
+.It Ar suffix
+Put the revision # (or 
+.Ar dots )
+at the end of the filename.
+.It Ar compressed
+Compress the backup files with
+.Pa @COMPRESS@ .
+.El
+.Sh COMMAND-LINE OPTIONS
+.Bl -tag -width XX
+.It Fl V
 Print version information, then exit.
-.TP
-.I \-d
+.It Fl d
 Print debugging information.  More 
-.I \-d
+.Ar d
 flags make
-.B savelogs
+.Nm
 generate more debugging.
-.TP
-.I \-f
+.It Fl f
 Rotate all logs, no matter what.
-.TP
-.IB \-C config-file
+.It Fl C Pa config-file
 Use the named
-.B config-file
+.Pa config-file
 instead of the default
-.IR /etc/savelogs.conf .
-
-.SH AVAILABILITY
+.Pq /etc/savelogs.conf .
+.El
+.Sh AVAILABILITY
 Current versions of savelogs can be found at
-.IR http://www.pell.portland.or.us/~orc/Code/savelogs .
-
-.SH FILES
-.IR /etc/savelog.conf " -- the default configuration file"
-
-.SH "SEE ALSO"
-.BR syslogd (8)
-
-.SH AUTHOR
+.Pa http://www.pell.portland.or.us/~orc/Code/savelogs .
+.Sh FILES
+.Bl -tag -width @confdir@/savelogs.conf+1
+.It Pa @confdir@/savelogs.conf
+The default configuration file
+.El
+.Sh SEE ALSO
+.Xr syslogd 8
+.Sh AUTHOR
 David Parsons
-.RI ( orc@pell.chi.il.us )
+.%T orc@pell.chi.il.us
