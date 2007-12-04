@@ -31,7 +31,7 @@ version.o: VERSION config.h
 savelogs.o: savelogs.c y.tab.h config.h
 
 clean: untest
-	rm -f savelogs *.o lex.yy.c version.c
+	rm -f savelogs *.o lex.yy.? version.c y.tab.?
 
 untest:
 	rm -f DEMO?
