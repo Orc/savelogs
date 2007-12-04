@@ -11,7 +11,7 @@ set compressed
 @HERE@/DEMO2	size(200k)
 			class("weekly")
 			truncate
-# 			save(3) in (@HERE@/OLD)
+ 			save(3) in (@HERE@/OLD)
 			signal("echo \"hello, world\"")
 			signal("echo hello,sailor")
 

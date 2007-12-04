@@ -154,10 +154,13 @@ printfiles(log_t *p)
     printfiles(p->next);
 
     printf("%s\n", p->path);
-    if (p->class)
+
+    if ( p->class )
 	printf("\tCLASS \"%s\"\n", p->class);
-    if (p->size > 0)
+
+    if ( p->size )
 	printf("\tSIZE %d\n", p->size);
+
     if (p->interval ) {
 	printf("\tEVERY ");
 	switch (p->interval) {
@@ -169,16 +172,15 @@ printfiles(log_t *p)
 	}
 	putchar('\n');
     }
-    if (p->backup) {
-	if (p->backup->count == 0)
-	    printf("\tTRUNCATE\n");
-	else {
-	    printf("\tSAVE %d IN %s",
-		p->backup->count, p->backup->dir); 
-	    putchar('\n');
-	}
-    }
-    if (p->touch)
+
+    if ( p->truncate )
+	printf("\tTRUNCATE\n");
+
+    if ( p->backup )
+	printf("\tSAVE %d IN %s\n",
+	    p->backup->count, p->backup->dir); 
+
+    if ( p->touch )
 	printf("\tTOUCH %o\n", p->touch);
 
     for (i=0; i < NR(p->jobs); i++)
@@ -193,9 +195,10 @@ void
 onejob(log_t *p, char *class, time_t now)
 {
     struct stat st;
+    int mode = 0644;
     int i;
 
-    if ( class && ((p->class == 0) || (strcasecmp(class, p->class) != 0)) )
+    if ( class && (strcasecmp(class, p->class) != 0) )
 	return;
 
     if ( stat(p->path, &st) == -1 ) {
@@ -248,23 +251,19 @@ onejob(log_t *p, char *class, time_t now)
     for (i = 0; i < NR(p->jobs); i++)
 	IT(p->jobs,i)->active++;
 
-    if ( p->backup ) {
-	if ( p->backup->count )
-	    Archive(p);
-	if ( doitnow )
-	    truncate(p->path, 0L);
-    }
+    if ( p->backup && p->backup->count )
+	Archive(p);
 
     if ( p->touch ) {
 	Trace(1, "touch [%o] %s", p->touch, p->path);
+	mode = p->touch;
+    }
 
-	if ( doitnow ) {
-	    unlink(p->path);
-	    if ( (i = creat(p->path, p->touch)) != -1 )
-		close(i);
-	    else
-		error("touch %s: %s", p->path, strerror(errno));
-	}
+    if ( doitnow && (p->truncate || p->touch) ) {
+	if ( (i=open(p->path, O_CREAT|O_TRUNC, mode)) != -1 )
+	    close(i);
+	else
+	    error("creat %s: %s", p->path, strerror(errno));
     }
 }
 

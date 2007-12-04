@@ -49,6 +49,7 @@ mkadd()
 {
     log_t *new = calloc(1, sizeof *new);
 
+    if ( this.class == 0 ) this.class = "*";
     if ( new ) {
 	memcpy(new, &this, sizeof this);
 
@@ -132,7 +133,7 @@ mkbackup(int number, char *destdir)
 {
     struct stat st;
 
-    if ( this.backup ) yyerror("duplicate backup");
+    if ( this.backup && this.backup->count ) yyerror("duplicate backup");
 
     if ( (this.backup = newbackup()) &&  destdir ) {
 	if ( stat(destdir, &st) == -1 ) yyerror(destdir);
@@ -249,5 +250,5 @@ save_in:	SAVE NUMBER IN PATH
 	|	SAVE IN PATH
 		{ mkbackup(1, yytext); }
 	|	TRUNCATE
-		{ mkbackup(0, 0); }
+		{ this.truncate = 1; }
 	;

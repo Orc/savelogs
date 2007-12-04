@@ -42,6 +42,7 @@ typedef struct _log_t {
     char *class;	/* log maintenance class */
     size_t size;	/* roll out if larger than this size */
     backup_t* backup;	/* backup to directory?  how many times? */
+    int truncate;	/* trim the file back to zero size */
     int interval;	/* how often to roll out the barrel */
     int touch;		/* manually create the file with given mode */
     ARY(job_t*) jobs;	/* things to do when backup fires */
