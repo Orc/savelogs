@@ -36,13 +36,13 @@ distclean spotless: clean
 test demo: savelogs
 	-mkdir OLD
 	for file in DEMO1 DEMO2 DEMO3 DEMO4 DEMO5; do \
-	    dd if=/dev/zero of=$$file count=201 bs=1024; \
+	    dd if=/dev/zero of=$$file count=201 bs=1024 >/dev/null; \
 	done
-	@SED@ -e "s~@HERE@~`pwd`~g" < demo.conf.sh | ./savelogs -dddddC -
-	@if [ ! -s DEMO1 ]; then echo "test failed on DEMO1"; exit 1; fi
-	@if [ ! -s DEMO2 ]; then echo "test failed on DEMO1"; exit 1; fi
-	@if [   -s DEMO3 ]; then echo "test failed on DEMO3"; exit 1; fi
-	@if [   -s DEMO4 ]; then echo "test failed on DEMO4"; exit 1; fi
+	@SED@ -e "s~@HERE@~`pwd`~g" < demo.conf.sh | ./savelogs -dddC -
+	@echo -n "test DEMO1..."; test ! -r DEMO1 && echo "ok" || echo "failed"
+	@echo -n "test DEMO2..."; test -r DEMO2 && echo "ok" || echo "failed"
+	@echo -n "test DEMO3..."; test -r DEMO3 && echo "ok" || echo "failed"
+	@echo -n "test DEMO4..."; test ! -r DEMO4 && echo "ok" || echo "failed"
 
 install: install.man install.bin 
 

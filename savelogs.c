@@ -147,6 +147,46 @@ buildtemp(char *file)
 } /* buildtemp */
 
 
+static void
+dumplog_t(log_t *p)
+{
+    int i;
+
+    if ( p == 0 ) return;
+
+    dumplog_t(p->next);
+
+    printf("%s\n", p->path);
+    if (p->class)
+	printf("\tCLASS \"%s\"\n", p->class);
+    if (p->size > 0)
+	printf("\tSIZE %d\n", p->size);
+    if (p->interval ) {
+	printf("\tEVERY ");
+	switch (p->interval) {
+	case DAY:   printf("DAY"); break;
+	case WEEK:  printf("WEEK"); break;
+	case MONTH: printf("MONTH"); break;
+	case YEAR:  printf("YEAR"); break;
+	default:    printf("CONFUSION!"); break;
+	}
+	putchar('\n');
+    }
+    if (p->backup) {
+	if (p->backup->count == 0)
+	    printf("\tTRUNCATE\n");
+	else
+	    printf("\tSAVE %d IN %s\n",
+		p->backup->count, p->backup->dir);
+    }
+    if (p->touch)
+	printf("\tTOUCH %o\n", p->touch);
+
+    for (i=0; i < NR(p->jobs); i++)
+	    printf("\tSIGNAL \"%s\"\n", IT(p->jobs,i)->command);
+}
+
+
 /*
  * examine() looks at all of the offending files
  */
@@ -162,30 +202,8 @@ examine(char *class)
     char *workfile;
     int doit;
 
-    if (debug > 2) {
-	for (p=files; p; p = p->next) {
-	    printf("%s\n", p->path);
-	    if (p->class)
-		printf("\tCLASS \"%s\"\n", p->class);
-	    if (p->size > 0)
-		printf("\tSIZE %d\n", p->size);
-	    if (p->interval > 0)
-		printf("\tEVERY %d DAYS\n", p->interval);
-	    if (p->backup) {
-		if (p->backup->count == 0)
-		    printf("\tTRUNCATE\n");
-		else {
-		    printf("\tSAVE %d IN %s\n",
-			p->backup->count, p->backup->dir);
-		}
-	    }
-	    if (p->touch)
-		printf("\tTOUCH %o\n", p->touch);
-
-	    for (i=0; i < NR(p->jobs); i++)
-		    printf("\tSIGNAL \"%s\"\n", IT(p->jobs,i)->command);
-	}
-    }
+    if (debug > 2)
+	dumplog_t(files);
 
     /* get the current time so we can do interval checks
      */
@@ -195,21 +213,6 @@ examine(char *class)
      * walk the victim list, picking out likely candidates
      */
     for (p = files; p; p = p->next) {
-	/* Check if we're actually planning on processing this
-	 * entry today
-	 */
-
-	doit = (class == 0) || (strcasecmp(class, p->class) == 0);
-
-	if ( !doit ) {
-    skip:   if ( debug > 2 ) {
-		printf("Skipping %s", p->path);
-		if (p->class)
-		    printf(" (class %s)", p->class);
-		putchar('\n');
-	    }
-	    continue;
-	}
 
 	rc = stat(p->path, &status);
 
@@ -223,39 +226,71 @@ examine(char *class)
 	    continue;
 	}
 
-	if (!forced) {
-#if 0
-	    if (p->interval > 0 && (now % p->interval == 0)) {
-		if (debug > 2)
-		    printf("It's a dead letter day for %s (%ld/%d)\n",
-			    p->path, now, p->interval);
-	    }
-	    else {
-		doit = 0;
-		if (debug > 2)
-		    printf("It's a good day to be %s\n", p->path);
-	    }
-#endif
+	/* Check if we're actually planning on processing this
+	 * entry today
+	 */
 
-	    if (p->size > 0) {
-		doit = 0;
-		if (status.st_size <= p->size) {
-		    if (debug > 2)
-			printf("%s is too small to be processed\n",
-				p->path);
-		}
-		else {
-		    if (debug > 2)
-			printf("%s is big enough to die (%ld/%ld)\n",
-				p->path, status.st_size, p->size);
-		}
-	    }
+	doit = (class == 0) || (strcasecmp(class, p->class) == 0);
 
-	    if ( !doit ) 
-		continue;
+	if ( !doit ) {
+	    if ( debug > 2 ) {
+		printf("Skipping %s", p->path);
+		if (p->class)
+		    printf(" (class %s)", p->class);
+		putchar('\n');
+	    }
+	    continue;
 	}
 
-	if (verbose)
+	if ( p->interval ) {
+	    if (status.st_ctime == now)
+		doit = 0;
+	    else {
+		struct tm tnow, tfile, *tp;
+
+		if ( tp = localtime(&now) )
+		    memcpy(&tnow, tp, sizeof *tp);
+		if ( tp = localtime(&status.st_ctime) )
+		    memcpy(&tfile, tp, sizeof *tp);
+
+		switch (p->interval) {
+		case YEAR:  if ( tfile.tm_year == tnow.tm_year )
+				doit = 0;
+			    else
+		case MONTH: if ( tfile.tm_mon == tnow.tm_mon )
+				doit = 0;
+			    else
+		case WEEK:  if ( (tfile.tm_yday % 7) != (tnow.tm_yday % 7) )
+				doit = 0;
+			    else
+		case DAY:   if ( tfile.tm_yday != tnow.tm_yday )
+				doit = 0;
+		}
+	    }
+	    if ( debug > 2 )
+		if ( doit )
+		    printf("%s is old enough to die\n", p->path);
+		else
+		    printf("%s will live another day\n", p->path);
+	}
+	if (p->size > 0) {
+	    if (status.st_size <= p->size) {
+		if (debug > 2)
+		    printf("%s is too small to be processed\n",
+			    p->path);
+		doit = 0;
+	    }
+	    else {
+		if (debug > 2)
+		    printf("%s is big enough to die (%ld/%ld)\n",
+			    p->path, status.st_size, p->size);
+	    }
+	}
+
+	if ( !(doit||forced) )
+	    continue;
+
+	if (debug || verbose)
 	    printf("Processing %s\n", p->path);
 
 	for (i = 0; i < NR(p->jobs); i++)
@@ -268,6 +303,13 @@ examine(char *class)
 	    else
 		Archive(p);
 	}
+	if ( p->touch ) {
+	    unlink(p->path);
+	    if ( (i = creat(p->path, p->touch)) != -1 )
+		close(i);
+	    else
+		error("touch %s: %s", p->path, strerror(errno));
+	}
     }
     /*
      * After shuffling files around, go back through and do all the signalling
@@ -275,7 +317,11 @@ examine(char *class)
      */
     for (sig = jobs; sig; sig = sig->next)
 	if (sig->active) {
-	    if (debug > 2)
+	    if (debug > 2) {
+		printf("(%d)", sig->active);
+		fflush(stdout);
+	    }
+	    if ( dontdoit || (debug > 3) )
 		printf("firing [%s]\n", sig->command);
 	    if ( !dontdoit )
 		system(sig->command);
