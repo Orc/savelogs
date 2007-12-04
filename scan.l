@@ -2,9 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "y.tab.h"
+#include "savelogs.h"
 
 int line_number;
+
+extern YYSTYPE yylval;
 
 #define yywrap()	1
 %}
@@ -22,12 +24,12 @@ in			{ return IN; }
 size			{ return SIZE; }
 every			{ return EVERY; }
 signal			{ return SIGNAL; }
-do			{ return SIGNAL; }
 save			{ return SAVE; }
 truncate		{ return TRUNCATE; }
-days{0,1}		{ return DAYS; }
-weeks{0,1}		{ return WEEKS; }
-years{0,1}		{ return YEARS; }
+days{0,1}		{ return DAY; }
+weeks{0,1}		{ return WEEK; }
+months{0,1}		{ return MONTH; }
+years{0,1}		{ return YEAR; }
 touch			{ return TOUCH; }
 class			{ return CLASS; }
 #[^\n]*\n		{ line_number++; }
@@ -49,7 +51,7 @@ class			{ return CLASS; }
 			}
 <string>\\.		{  *sbp++ = yytext[1]; }
 <string>.		{  *sbp++ = yytext[0]; }
-{DIGIT}+		{ return NUMBER; }
 {DIGIT}+[mMkK]		{ return SIZE_SPECIFICATION; }
+{DIGIT}+		{ yylval = atoi(yytext); return NUMBER; }
 \/{FILECHR}+		{ return PATH; }
 .			{ }

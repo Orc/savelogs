@@ -49,3 +49,6 @@ typedef struct _log_t {
     ARY(job_t*) jobs;	/* things to do when backup fires */
     struct _log_t *next;/* next in chain */
 } log_t;
+
+
+#define YYSTYPE int

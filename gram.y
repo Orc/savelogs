@@ -41,6 +41,22 @@ xstrdup(char *s)
 
 
 void
+mkadd()
+{
+    log_t *new = calloc(1, sizeof *new);
+
+    if ( new ) {
+	memcpy(new, &this, sizeof this);
+
+	new->next = files;
+	files = new;
+    }
+    else
+	yyerror("out of memory");
+}
+
+
+void
 mksave(char *path)
 {
     bzero(&this, sizeof this);
@@ -56,8 +72,10 @@ mkclass(char *class)
 }
 
 void
-mktouch(int mode)
+mktouch(char *str)
 {
+    int mode = strtoul(str, 0, 8);
+
     if ( this.touch ) yyerror("duplicate touch");
     if ( mode == 0 ) yyerror("touch mode may not be zero");
     this.touch = mode;
@@ -80,7 +98,8 @@ specify(char *val)
     case 'm':
     case 'M':   size *= 1024;
     case 'k':
-    case 'K':   break;
+    case 'K':   size *= 1024;
+		break;
     default:	yyerror("unknown size suffix");
     }
     return size;
@@ -161,10 +180,18 @@ mksignal(char *sig)
     IT(this.jobs,idx) = jot;
 }
 
+
+void
+mkinterval(interval)
+{
+    if (this.interval) yyerror("duplicate interval");
+    this.interval = interval;
+}
+
 %}
 
 %token COMMA PATH SIZE SAVE IN SIGNAL STRING
-%token NUMBER TOKEN EVERY DAYS WEEKS YEARS
+%token NUMBER TOKEN EVERY DAY WEEK MONTH YEAR
 %token SIZE_SPECIFICATION TRUNCATE TOUCH CLASS
 
 %%
@@ -173,6 +200,7 @@ config:		config stanza
 	|	/*nothing*/
 
 stanza:		prefix commands
+		{ mkadd(); }
 	;
 
 prefix:		PATH
@@ -185,12 +213,21 @@ commands:	commands statement
 statement:	CLASS STRING
 		{ mkclass(yytext); }
 	|	TOUCH NUMBER
-		{ mktouch($2); }
+		{ mktouch(yytext); }
 	|	SIGNAL STRING
 		{ mksignal(yytext); }
 	|	SIZE SIZE_SPECIFICATION
 		{ mksize(specify(yytext)); }
+	|	EVERY every
 	|	save_in
+	;
+
+every:		WEEK
+		{ mkinterval(WEEK); }
+	|	MONTH
+		{ mkinterval(MONTH); }
+	|	YEAR
+		{ mkinterval(YEAR); }
 	;
 
 save_in:	SAVE NUMBER IN PATH

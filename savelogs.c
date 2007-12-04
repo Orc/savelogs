@@ -43,6 +43,7 @@ extern FILE *yyin;
 
 char *cfgfile = LOG_CFG;
 
+int dontdoit = 0;
 int debug = 0;		/* debugging level, set with -d */
 int verbose = 0;	/* show progress, set with -v */
 int forced = 0;		/* rotate everything now, no matter what */
@@ -83,8 +84,9 @@ main(int argc, char **argv)
 
     now /= SECSPERDAY;
 
-    while ((rc=getopt(argc, argv, "vdfVC:")) != EOF) {
+    while ((rc=getopt(argc, argv, "C:dfnvV")) != EOF) {
 	switch (rc) {
+	case 'n':	dontdoit++;				break;
 	case 'v':	verbose++;				break;
 	case 'd':   	debug++;				break;
 	case 'f':       forced++;				break;
@@ -97,12 +99,17 @@ main(int argc, char **argv)
     argc -= optind;
     argv += optind;
 
-    if ( (yyin = fopen(cfgfile, "r")) == 0 ) {
+    if ( strcmp(cfgfile, "-") == 0 )
+	yyin = stdin;
+    else if ( (yyin = fopen(cfgfile, "r")) == 0 ) {
 	error("can't open %s: %s", cfgfile, strerror(errno));
 	finish(1);
     }
 
     if ( yyparse() != 0 ) finish(1);
+
+    if ( debug > 1 ) printf("examine%s%s\n", argc ? " class " : " *",
+					     argc ? argv[0] : "");
 
     examine(argc ? argv[0] : 0);
     finish(0);
@@ -217,6 +224,7 @@ examine(char *class)
 	}
 
 	if (!forced) {
+#if 0
 	    if (p->interval > 0 && (now % p->interval == 0)) {
 		if (debug > 2)
 		    printf("It's a dead letter day for %s (%ld/%d)\n",
@@ -227,6 +235,7 @@ examine(char *class)
 		if (debug > 2)
 		    printf("It's a good day to be %s\n", p->path);
 	    }
+#endif
 
 	    if (p->size > 0) {
 		doit = 0;
@@ -242,7 +251,7 @@ examine(char *class)
 		}
 	    }
 
-	    if ((p->size || p->interval) && !doit)
+	    if ( !doit ) 
 		continue;
 	}
 
@@ -253,8 +262,9 @@ examine(char *class)
 	    IT(p->jobs,i)->active++;
 
 	if ( p->backup ) {
-	    if ( p->backup->count == 0 )
-		truncate(p->path, 0L);
+	    if ( p->backup->count == 0 ) {
+		if ( !dontdoit ) truncate(p->path, 0L);
+	    }
 	    else
 		Archive(p);
 	}
@@ -267,7 +277,8 @@ examine(char *class)
 	if (sig->active) {
 	    if (debug > 2)
 		printf("firing [%s]\n", sig->command);
-	    system(sig->command);
+	    if ( !dontdoit )
+		system(sig->command);
 	    sig->active = 0;
 	}
 } /* examine */
@@ -295,7 +306,9 @@ pushback(log_t *f)
 	sprintf(from, "%s/%d.%s", f->backup->dir, i-1, bn);
 
 	if (debug > 2)
-	    printf("pushback %s to %s\n", from, to);
+	    printf("%s -> %s\n", from, to);
+
+	if ( dontdoit ) continue;
 
 #if HAVE_RENAME
 	rename(from, to);
@@ -329,6 +342,9 @@ Archive(log_t *f)
 
     /* try to rename the file into the archive
      */
+
+    if ( debug > 2 ) printf("%s -> %s\n", f->path, arcf);
+    if ( dontdoit ) return; 
 #if HAVE_RENAME
     rc = rename(f->path, arcf);
 #else
