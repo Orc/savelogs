@@ -4,10 +4,10 @@
 LEX	= @LEX@ -li
 CC	= @CC@
 CFLAGS	= @CFLAGS@
-MANDIR  = $(ROOT)@mandir@
-CONFDIR = $(ROOT)@confdir@
-LIBDIR  = $(ROOT)@libdir@
-BINDIR  = $(ROOT)@exedir@
+MANDIR  = @mandir@
+CONFDIR = @confdir@
+LIBDIR  = @libdir@
+SBINDIR  =@prefix@/sbin
 
 OBJECTS	= savelogs.o lex.yy.o y.tab.o version.o
 
@@ -55,15 +55,15 @@ test demo: savelogs untest
 install: install.man install.bin 
 
 install.man:
-	@INSTALL@ -d $(MANDIR)/man8
-	@INSTALL_DATA@ savelogs.8 $(MANDIR)/man8
+	@INSTALL@ -d $(DEST)$(MANDIR)/man8
+	@INSTALL_DATA@ savelogs.8 $(DEST)$(MANDIR)/man8
 
 install.bin:
-	@INSTALL@ -d $(BINDIR)
-	@INSTALL_PROGRAM@ savelogs $(BINDIR)
+	@INSTALL@ -d $(DEST)$(SBINDIR)
+	@INSTALL_PROGRAM@ savelogs $(DEST)$(SBINDIR)
 
 install.conf:
-	if [ ! -r $(CONFDIR)/savelogs.conf ]; then \
-	    @INSTALL@ -d $(CONFDIR); \
-	    @INSTALL_DATA@ log.conf $(CONFDIR)/savelogs.conf; \
+	if [ ! -r $(DEST)$(CONFDIR)/savelogs.conf ]; then \
+	    @INSTALL@ -d $(DEST)$(CONFDIR); \
+	    @INSTALL_DATA@ log.conf $(DEST)$(CONFDIR)/savelogs.conf; \
 	fi
