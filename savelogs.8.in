@@ -100,7 +100,7 @@ Compress the backup files with
 .Pa @COMPRESS@ .
 .El
 .Sh COMMAND-LINE OPTIONS
-.Bl -tag -width XX
+.Bl -tag -width XXX
 .It Fl V
 Print version information, then exit.
 .It Fl d

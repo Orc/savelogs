@@ -242,8 +242,8 @@ onejob(log_t *p, char *class, time_t now)
 	if (st.st_size < p->size)
 	    return;
 
-	Trace(2, "%s is big enough to die ( %d > %d )",
-		    p->path, st.st_size, p->size);
+	Trace(2, "%s is big enough to die ( %ld > %ld )",
+		    p->path, (long)st.st_size, (long)p->size);
     }
 
     Trace(0, "Processing %s", p->path);
