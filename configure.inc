@@ -382,7 +382,18 @@ EOF
 
     AC_SUB 'CC' "$AC_CC"
 
+    if [ "$status" -eq 0 ]; then
+	echo "int phui;" > /tmp/ngc$$.c
+	if $AC_CC $AC_CFLAGS -Wno-parentheses -c -o /tmp/ngc$$.o /tmp/ngc$$.c; then
+	    TLOG "It looks like you are using gcc.  You have my deepest sympathies."
+	    GCC_NOT_C=1
+	    AC_DEFINE "GCC_NOT_C" "1"
+	    AC_CFLAGS="$AC_CFLAGS -Wno-parentheses"
+	fi
+    fi
+
     rm -f /tmp/ngc$$ /tmp/ngc$$.c /tmp/ngc$$.o
+
 
     return $status
 }

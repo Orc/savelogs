@@ -16,7 +16,7 @@ TARGET=savelogs
 #
 AC_INIT savelogs
 
-AC_PROG_CC || AC_FAIL "$TARGET need a (functional) C compiler"
+AC_PROG_CC || AC_FAIL "$TARGET needs a (functional) C compiler"
 AC_PROG_LEX || AC_FAIL "$TARGET needs lex"
 AC_PROG_YACC || AC_FAIL "$TARGET needs yacc"
 MF_PATH_INCLUDE COMPRESS gzip compress
@@ -31,7 +31,7 @@ AC_CHECK_HEADERS getopt.h
 AC_CHECK_FUNCS basename && AC_CHECK_HEADERS libgen.h
 AC_CHECK_FUNCS rename
 
-AC_DEFINE DEFAULT_CONFIG	\"$AC_CONFDIR/savelogs.conf\"
+AC_DEFINE DEFAULT_CONFIG \"$AC_CONFDIR/savelogs.conf\"
 
 AC_OUTPUT savelogs.8 Makefile
 
