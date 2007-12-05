@@ -246,7 +246,7 @@ onejob(log_t *p, char *class, time_t now)
 		    p->path, (long)st.st_size, (long)p->size);
     }
 
-    Trace(0, "Processing %s", p->path);
+    Trace(1, "Processing %s", p->path);
 
     for (i = 0; i < NR(p->jobs); i++)
 	IT(p->jobs,i)->active++;
