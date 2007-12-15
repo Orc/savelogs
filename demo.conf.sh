@@ -4,7 +4,7 @@ set compressed
 
 @HERE@/DEMO1	size=200k,
 			class="daily",
-			save 3 in @HERE@/OLD,
+			save 10 in @HERE@/OLD,
 			signal="echo \"hello, world\"";
 			signal="echo Hi There!";
 

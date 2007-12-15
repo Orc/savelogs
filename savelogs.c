@@ -306,24 +306,41 @@ process(char *class)
 
 
 /*
+ * approxlog10() does a q&d approximate log10 of an integer, using
+ * the Bunnies And Burrows counting system ( 1, 2, 3, 4, many, many, many )
+ */
+static int
+approxlog10(int x)
+{
+    if ( x < 10 ) return 0;
+    if ( x < 100 ) return 1;
+    if ( x < 1000 ) return 2;
+    if ( x < 10000 ) return 3;
+    return 4;
+}
+
+
+/*
  * bkupname() generates the name of a backup file
  */
 void
-bkupname(char *dest, char *dir, int age, char *file, int compressed)
+bkupname(char *dest, log_t *p, int age, char *file, int compressed)
 {
     char *dots = "ooooooooooooooo";
+    char *dir = p->backup->dir;
+    int width = 1 + approxlog10(p->backup->count);
 
     if ( backup_suffix ) {
 	if ( dotted_backup )
 	    sprintf(dest, "%s/%s.%*.*s", dir, file, age+1, age+1, dots);
 	else
-	    sprintf(dest, "%s/%s.%d", dir, file, age);
+	    sprintf(dest, "%s/%s.%0*d", dir, file, width, age);
     }
     else {
 	if ( dotted_backup )
 	    sprintf(dest, "%s/%*.*s.%s", dir, age+1, age+1, dots, file);
 	else
-	    sprintf(dest, "%s/%d.%s", dir, age, file);
+	    sprintf(dest, "%s/%0*d.%s", dir, width, age, file);
     }
 #ifdef ZEXT
     if ( compressed )
@@ -352,8 +369,8 @@ pushback(log_t *f, int level)
 
     siz = strlen(f->backup->dir) + 1;
 
-    bkupname(to, f->backup->dir, level+1, bn, compress_them);
-    bkupname(from, f->backup->dir, level, bn, compress_them);
+    bkupname(to, f, level+1, bn, compress_them);
+    bkupname(from, f, level, bn, compress_them);
 
     if ( stat(to, &st) == 0 )
 	pushback(f, level+1);
@@ -382,7 +399,7 @@ Archive(log_t *f)
 
     arcf = alloca(strlen(f->backup->dir) + strlen(bn) + 20);
 
-    bkupname(arcf, f->backup->dir, 0, bn, 0);
+    bkupname(arcf, f, 0, bn, 0);
 
     /* try to rename the file into the archive
      */
