@@ -1,4 +1,6 @@
 set suffix
+set number
+set numbered
 set dots
 set compressed
 

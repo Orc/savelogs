@@ -198,7 +198,7 @@ mkinterval(interval)
 %token COMMA PATH SIZE SAVE IN SIGNAL STRING
 %token NUMBER TOKEN EVERY DAY WEEK MONTH YEAR
 %token SIZE_SPECIFICATION TRUNCATE TOUCH CLASS
-%token SET DOTS SUFFIX COMPRESSED
+%token SET DOTS SUFFIX COMPRESSED NUMBERED
 
 %%
 
@@ -208,14 +208,19 @@ config:		config stanza
 stanza:		prefix commands
 		{ mkadd(); }
 	|	SET option
+		{   switch ($2) {
+		    case DOTS: dotted_backup = 1; break;
+		    case NUMBERED: dotted_backup = 0; break;
+		    case SUFFIX: backup_suffix = 1; break;
+		    case COMPRESSED: compress_them = 1; break;
+		    }
+		}
 	;
 
 option:		DOTS
-		{ dotted_backup = 1; }
+	|	NUMBERED
 	|	SUFFIX
-		{ backup_suffix = 1; }
 	|	COMPRESSED
-		{ compress_them = 1; }
 	;
 
 prefix:		PATH
@@ -235,6 +240,7 @@ statement:	CLASS STRING
 		{ mksize(specify(yytext)); }
 	|	EVERY every
 	|	save_in
+	|	option
 	;
 
 every:		WEEK

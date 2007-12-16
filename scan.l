@@ -27,16 +27,17 @@ every			{ return EVERY; }
 signal			{ return SIGNAL; }
 save			{ return SAVE; }
 truncate		{ return TRUNCATE; }
-days{0,1}		{ return DAY; }
-weeks{0,1}		{ return WEEK; }
-months{0,1}		{ return MONTH; }
-years{0,1}		{ return YEAR; }
+days?			{ return DAY; }
+weeks?			{ return WEEK; }
+months?			{ return MONTH; }
+years?			{ return YEAR; }
 touch			{ return TOUCH; }
 class			{ return CLASS; }
 set			{ return SET; }
-dots			{ return DOTS; }
-suffix			{ return SUFFIX; }
-compressed		{ return COMPRESSED; }
+dots			{ return yylval = DOTS; }
+suffix			{ return yylval = SUFFIX; }
+compressed		{ return yylval = COMPRESSED; }
+number(ed)?		{ return yylval = NUMBERED; }
 #[^\n]*\n		{ line_number++; }
 \n			{ line_number++; }
 [ \t]+			{ }

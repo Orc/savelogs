@@ -45,6 +45,10 @@ typedef struct _log_t {
     int truncate;	/* trim the file back to zero size */
     int interval;	/* how often to roll out the barrel */
     int touch;		/* manually create the file with given mode */
+    int modes;		/* backup format modes */
+#define LOG_DOTS	0x01
+#define LOG_SUFFIX	0x02
+#define LOG_COMPRESS	0x04
     ARY(job_t*) jobs;	/* things to do when backup fires */
     struct _log_t *next;/* next in chain */
 } log_t;
