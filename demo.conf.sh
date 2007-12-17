@@ -1,7 +1,5 @@
-set suffix
 set number
-set numbered
-set dots
+set suffix
 set compressed
 
 @HERE@/DEMO1	size=200k,
@@ -13,6 +11,8 @@ set compressed
 @HERE@/DEMO2	size(200k)
 			class("weekly")
 			truncate
+			prefix
+			dots
  			save(3) in (@HERE@/OLD)
 			signal("echo \"hello, world\"")
 			signal("echo hello,sailor")

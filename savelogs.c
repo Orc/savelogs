@@ -42,7 +42,7 @@
 
 #include "savelogs.h"
 
-extern job_t *jobs;
+extern signal_t *signals;
 extern log_t *files;
 extern FILE *yyin;
 extern char version[];
@@ -51,9 +51,9 @@ char *cfgfile = DEFAULT_CONFIG;
 char *pgm;
 
 int doitnow = 1;
-int backup_suffix = 0;	/* have backup sequence# as a suffix, not prefix */
-int dotted_backup = 0;	/* use o's for backup sequence, not #s */
-int compress_them = 0;	/* run compress on the backed-up files */
+Flag backup_suffix = false;	/* have backup sequence# as a suffix, not prefix */
+Flag dotted_backup = false;	/* use o's for backup sequence, not #s */
+Flag compress_them = false;	/* run compress on the backed-up files */
 int debug = 0;		/* debugging level, set with -d */
 int forced = 0;		/* rotate everything now, no matter what */
 time_t now;		/* what time of day is it, for the SICK AWFUL
@@ -132,6 +132,17 @@ Trace(int level, char *fmt, ...)
 
 
 /*
+ * show what a flag is set to, if it's set
+ */
+static char*
+sayflag(char *prefix, Flag f, char *yes, char *no)
+{
+    if ( f )
+	printf("%s%s\n", prefix, (f == true)?yes:no);
+}
+
+
+/*
  * finish() closes syslog, then exits with the given error code
  */
 finish(int status)
@@ -161,6 +172,13 @@ printfiles(log_t *p)
     if ( p->size )
 	printf("\tSIZE %d\n", p->size);
 
+    if ( p->dotted_backup != dotted_backup )
+	sayflag("\t", p->dotted_backup, "DOTS", "NUMBERS");
+    if ( p->backup_suffix != backup_suffix )
+	sayflag("\t", p->backup_suffix, "SUFFIX", "PREFIX");
+    if ( p->compress_them != compress_them )
+	sayflag("\t", p->compress_them, "COMPRESSED" , "UNCOMPRESSED");
+    
     if (p->interval ) {
 	printf("\tEVERY ");
 	switch (p->interval) {
@@ -183,13 +201,13 @@ printfiles(log_t *p)
     if ( p->touch )
 	printf("\tTOUCH %o\n", p->touch);
 
-    for (i=0; i < NR(p->jobs); i++)
-	    printf("\tSIGNAL \"%s\"\n", IT(p->jobs,i)->command);
+    for (i=0; i < NR(p->signals); i++)
+	    printf("\tSIGNAL \"%s\"\n", IT(p->signals,i)->command);
 }
 
 
 /*
- * process a single job_t
+ * process a single signal_t
  */
 void
 onejob(log_t *p, char *class, time_t now)
@@ -248,8 +266,8 @@ onejob(log_t *p, char *class, time_t now)
 
     Trace(1, "Processing %s", p->path);
 
-    for (i = 0; i < NR(p->jobs); i++)
-	IT(p->jobs,i)->active++;
+    for (i = 0; i < NR(p->signals); i++)
+	IT(p->signals,i)->active++;
 
     if ( p->backup && p->backup->count )
 	Archive(p);
@@ -275,17 +293,14 @@ int
 process(char *class)
 {
     log_t *p;
-    job_t *sig;
+    signal_t *sig;
     char *workfile;
     int doit;
 
     if ( debug ) {
-	if ( dotted_backup )
-	    printf("SET DOTS\n");
-	if ( backup_suffix )
-	    printf("SET SUFFIX\n");
-	if ( compress_them )
-	    printf("SET COMPRESSED\n");
+	sayflag("SET ", dotted_backup, "DOTS", "NUMBERS");
+	sayflag("SET ", backup_suffix, "SUFFIX" , "PREFIX");
+	sayflag("SET ", compress_them, "COMPRESSED", "UNCOMPRESSED");
 	printfiles(files);
     }
 
@@ -294,7 +309,7 @@ process(char *class)
     for (p = files; p; p = p->next)
 	onejob(p, class, now);
 
-    for (sig = jobs; sig; sig = sig->next)
+    for (sig = signals; sig; sig = sig->next)
 	if (sig->active) {
 	    Trace(3, "firing ``%s'' (%d request%s)",
 			sig->command, sig->active, (sig->active==1)?"":"s");
@@ -324,26 +339,26 @@ approxlog10(int x)
  * bkupname() generates the name of a backup file
  */
 void
-bkupname(char *dest, log_t *p, int age, char *file, int compressed)
+bkupname(char *dest, log_t *p, int age, char *file, int rename_backup)
 {
     char *dots = "ooooooooooooooo";
     char *dir = p->backup->dir;
     int width = 1 + approxlog10(p->backup->count);
 
-    if ( backup_suffix ) {
-	if ( dotted_backup )
+    if ( p->backup_suffix == true ) {
+	if ( p->dotted_backup == true )
 	    sprintf(dest, "%s/%s.%*.*s", dir, file, age+1, age+1, dots);
 	else
 	    sprintf(dest, "%s/%s.%0*d", dir, file, width, age);
     }
     else {
-	if ( dotted_backup )
+	if ( p->dotted_backup == true )
 	    sprintf(dest, "%s/%*.*s.%s", dir, age+1, age+1, dots, file);
 	else
 	    sprintf(dest, "%s/%0*d.%s", dir, width, age, file);
     }
 #ifdef ZEXT
-    if ( compressed )
+    if ( (p->compress_them == true) && rename_backup )
 	strcat(dest, ZEXT);
 #endif
 }
@@ -369,8 +384,8 @@ pushback(log_t *f, int level)
 
     siz = strlen(f->backup->dir) + 1;
 
-    bkupname(to, f, level+1, bn, compress_them);
-    bkupname(from, f, level, bn, compress_them);
+    bkupname(to, f, level+1, bn, 1);
+    bkupname(from, f, level, bn, 1);
 
     if ( stat(to, &st) == 0 )
 	pushback(f, level+1);
@@ -439,7 +454,7 @@ Archive(log_t *f)
     }
 
 #ifdef ZEXT
-    if ( compress_them ) {
+    if ( f->compress_them == true ) {
 	char *squash = alloca(sizeof PATH_COMPRESS + strlen(arcf) + 4);
 
 	sprintf(squash, "%s %s", PATH_COMPRESS, arcf);

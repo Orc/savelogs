@@ -82,22 +82,50 @@ signal to
 after it's finished.
 .El
 .Pp
+You can also specify backup naming and compression on a logfile by
+logfile basis by using options listed for the 
+.Em SET
+directive (see below.)
+If you don't set the backup naming and compression for a logfile, it
+takes the settings that were defined before it, so
+.Pp
+.nf
+    SET COMPRESSED
+    /var/log/messages SAVE 2 IN OLD
+    SET UNCOMPRESSED
+    /var/log/syslog SAVE 2 IN OLD
+.fi
+.Pp
+Means that
+.Pa /var/log/messages
+will be saved as a compressed file, while
+.Pa /var/log/syslog
+will be saved uncompressed.
+.Pp
 To configure how backups are named and whether they are compressed,
 use the
 .Em SET Ar option
 command.   The following options are defined:
-.Bl -tag -width compressed
+.Bl -tag -width uncompressed
 .It Ar dots
 Instead of using a revision number, prefix each backup file with
 .Dq o 's,
 where the older ones have more dots than the newer ones do.
+.It Ar numbers
+Use a revision number on the backup files.
 .It Ar suffix
 Put the revision # (or 
 .Ar dots )
 at the end of the filename.
+.It Ar prefix
+Put the revision # (or
+.Ar dots )
+at the start of the filename.
 .It Ar compressed
 Compress the backup files with
 .Pa @COMPRESS@ .
+.It Ar uncompressed
+Don't compress the backup files.
 .El
 .Sh COMMAND-LINE OPTIONS
 .Bl -tag -width XXX

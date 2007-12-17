@@ -35,9 +35,11 @@ touch			{ return TOUCH; }
 class			{ return CLASS; }
 set			{ return SET; }
 dots			{ return yylval = DOTS; }
-suffix			{ return yylval = SUFFIX; }
-compressed		{ return yylval = COMPRESSED; }
 number(ed)?		{ return yylval = NUMBERED; }
+suffix			{ return yylval = SUFFIX; }
+prefix			{ return yylval = PREFIX; }
+compress(ed)?		{ return yylval = COMPRESS; }
+uncompress(ed)?		{ return yylval = PLAIN; }
 #[^\n]*\n		{ line_number++; }
 \n			{ line_number++; }
 [ \t]+			{ }

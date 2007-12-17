@@ -8,17 +8,21 @@
 
 #include "savelogs.h"
 
-extern int dotted_backup;
-extern int backup_suffix;
-extern int compress_them;
+extern Flag dotted_backup;
+extern Flag backup_suffix;
+extern Flag compress_them;
 
 extern char yytext[];
 FILE *yyin;
 
 log_t this;
 log_t *files = 0;
-job_t *jobs = 0;
+signal_t *signals = 0;
 
+/*
+ * whine bitterly, then die on the spot.   No error correction or
+ * anything fancy here!
+ */
 int
 yyerror(char *why)
 {
@@ -33,6 +37,9 @@ yyerror(char *why)
 }
 
 
+/*
+ * duplicate a string or die trying
+ */
 char *
 xstrdup(char *s)
 {
@@ -44,12 +51,20 @@ xstrdup(char *s)
 }
 
 
+/*
+ * add the current log_t to the list of already compiled ones
+ */
 void
 mkadd()
 {
     log_t *new = calloc(1, sizeof *new);
 
     if ( this.class == 0 ) this.class = "*";
+    
+    if ( !this.compress_them ) this.compress_them = compress_them;
+    if ( !this.dotted_backup ) this.dotted_backup = dotted_backup;
+    if ( !this.backup_suffix ) this.backup_suffix = backup_suffix;
+    
     if ( new ) {
 	memcpy(new, &this, sizeof this);
 
@@ -61,6 +76,10 @@ mkadd()
 }
 
 
+/*
+ * the first thing to do when building a log_t is to zero
+ * it and assign the pathname into it.
+ */
 void
 mksave(char *path)
 {
@@ -69,12 +88,14 @@ mksave(char *path)
     this.path = xstrdup(path);
 }
 
+
 void
 mkclass(char *class)
 {
     if ( this.class ) yyerror("duplicate class");
     this.class = xstrdup(class);
 }
+
 
 void
 mktouch(char *str)
@@ -86,8 +107,9 @@ mktouch(char *str)
     this.touch = mode;
 }
 
+
 long
-specify(char *val)
+sizeandunits(char *val)
 {
     char *last;
     unsigned long size = 0;
@@ -110,6 +132,7 @@ specify(char *val)
     return size;
 }
 
+
 void
 mksize(long size)
 {
@@ -117,6 +140,7 @@ mksize(long size)
     if ( size == 0 ) yyerror("size must be > zero");
     this.size = size;
 }
+
 
 static backup_t*
 newbackup()
@@ -127,6 +151,7 @@ newbackup()
 
     return ret;
 }
+
 
 void
 mkbackup(int number, char *destdir)
@@ -143,14 +168,22 @@ mkbackup(int number, char *destdir)
     }
 }
 
+
+/*
+ * add a new signal/link to an existing signal 
+ */
 void
 mksignal(char *sig)
 {
-    job_t *jot;
+    signal_t *jot;
     int idx;
     char *p, *q;
 
 
+    /* signals are unix command lines, so leading and
+     * trailing whitespace isn't significant.   So trim
+     * it away.
+     */
     for (p=sig; isspace(*p); ++p)
 	;
 
@@ -160,14 +193,16 @@ mksignal(char *sig)
     p[idx] = 0;
 
 
-    /* add a new job entry
+    /* allocate a new signal entry.
      */
-    idx = NR(this.jobs);
-    GROW(this.jobs);
+    idx = NR(this.signals);
+    GROW(this.signals);
 
-    /* see if the job is already listed
+    /* then see if the signal is already listed in the global
+     * signal list.   If it is, just bump the linkcount, otherwise
+     * link a new signal into the list.
      */
-    for (jot = jobs; jot; jot = jot->next)
+    for (jot = signals; jot; jot = jot->next)
 	if ( strcmp(sig, jot->command) == 0 )
 	    break;
 
@@ -176,13 +211,16 @@ mksignal(char *sig)
     else if ( (jot = calloc(1, sizeof *jot)) != 0 ) {
 	jot->command = xstrdup(sig);
 	jot->links = 1;
-	jot->next = jobs;
-	jobs = jot;
+	jot->next = signals;
+	signals = jot;
     }
     else
 	yyerror("out of memory");
 
-    IT(this.jobs,idx) = jot;
+    /* and no matter what we still need to remember to
+     * execute it if the log is rotated.
+     */
+    IT(this.signals,idx) = jot;
 }
 
 
@@ -198,7 +236,7 @@ mkinterval(interval)
 %token COMMA PATH SIZE SAVE IN SIGNAL STRING
 %token NUMBER TOKEN EVERY DAY WEEK MONTH YEAR
 %token SIZE_SPECIFICATION TRUNCATE TOUCH CLASS
-%token SET DOTS SUFFIX COMPRESSED NUMBERED
+%token SET DOTS NUMBERED SUFFIX PREFIX COMPRESS PLAIN
 
 %%
 
@@ -209,10 +247,12 @@ stanza:		prefix commands
 		{ mkadd(); }
 	|	SET option
 		{   switch ($2) {
-		    case DOTS: dotted_backup = 1; break;
-		    case NUMBERED: dotted_backup = 0; break;
-		    case SUFFIX: backup_suffix = 1; break;
-		    case COMPRESSED: compress_them = 1; break;
+		    case DOTS:     dotted_backup = true;  break;
+		    case NUMBERED: dotted_backup = false; break;
+		    case SUFFIX:   backup_suffix = true;  break;
+		    case PREFIX:   backup_suffix = false; break;
+		    case COMPRESS: compress_them = true;  break;
+		    case PLAIN:    compress_them = false; break;
 		    }
 		}
 	;
@@ -220,7 +260,9 @@ stanza:		prefix commands
 option:		DOTS
 	|	NUMBERED
 	|	SUFFIX
-	|	COMPRESSED
+	|	PREFIX
+	|	COMPRESS
+	|	PLAIN
 	;
 
 prefix:		PATH
@@ -237,10 +279,19 @@ statement:	CLASS STRING
 	|	SIGNAL STRING
 		{ mksignal(yytext); }
 	|	SIZE SIZE_SPECIFICATION
-		{ mksize(specify(yytext)); }
+		{ mksize(sizeandunits(yytext)); }
 	|	EVERY every
 	|	save_in
 	|	option
+		{   switch ($1) {
+		    case DOTS:     this.dotted_backup = true;  break;
+		    case NUMBERED: this.dotted_backup = false; break;
+		    case SUFFIX:   this.backup_suffix = true;  break;
+		    case PREFIX:   this.backup_suffix = false; break;
+		    case COMPRESS: this.compress_them = true;  break;
+		    case PLAIN:    this.compress_them = false; break;
+		    }
+		}
 	;
 
 every:		WEEK
