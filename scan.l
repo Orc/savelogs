@@ -34,8 +34,8 @@ years?			{ return YEAR; }
 touch			{ return TOUCH; }
 class			{ return CLASS; }
 set			{ return SET; }
-dots			{ return yylval = DOTS; }
-number(ed)?		{ return yylval = NUMBERED; }
+dot(s|ted)?		{ return yylval = DOTS; }
+number(s|ed)?		{ return yylval = NUMBERED; }
 suffix			{ return yylval = SUFFIX; }
 prefix			{ return yylval = PREFIX; }
 compress(ed)?		{ return yylval = COMPRESS; }

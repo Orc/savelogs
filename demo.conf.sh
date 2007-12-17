@@ -1,3 +1,5 @@
+set numbers
+set numbered
 set number
 set suffix
 set compressed
