@@ -64,12 +64,14 @@ so that if multiple logs are rotated the actions will only be executed
 once.
 .Pp
 For example, the following configuration file
+.Pp
 .nf
-/var/adm/syslog EVERY WEEK
-                SAVE 2 IN /var/adm/OLD
-                TOUCH 644
-                SIGNAL "killall -HUP syslogd"
+    /var/adm/syslog EVERY WEEK
+		    SAVE 2 IN /var/adm/OLD
+		    TOUCH 644
+		    SIGNAL "killall -HUP syslogd"
 .fi
+.Pp
 Rotates
 .Pa /var/adm/syslog
 every week, creating a new empty file with mode 644, saving two of the
@@ -91,9 +93,9 @@ takes the settings that were defined before it, so
 .Pp
 .nf
     SET COMPRESSED
-    /var/log/messages SAVE 2 IN OLD
+    /var/log/messages SAVE 2 IN /var/log/OLD
     SET UNCOMPRESSED
-    /var/log/syslog SAVE 2 IN OLD
+    /var/log/syslog SAVE 2 IN /var/log/OLD
 .fi
 .Pp
 Means that
