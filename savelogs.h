@@ -1,5 +1,7 @@
 #include "y.tab.h"
 
+#include "cstring.h"
+
 #define SECSPERDAY	24*60*60	/* how many seconds in a day */
 
 /*
@@ -34,16 +36,6 @@ typedef int* Flag;
 #define true	(Flag)1
 #define false	(Flag)2
 
-/*
- * array type manipulators
- */
-#define ARY(x)	struct { x *items; int count; }
-#define IT(x,i)	((x).items[i])
-#define NR(x)	((x).count)
-#define GROW(x)	(((x).items = (x).count ? \
-	    realloc((x).items, sizeof ((x).items[0]) * ( 1 + (x).count) ) : \
-	    malloc(sizeof((x).items[0]) * (1 + (x).count)) ), \
-	    ((x).count += 1) )
 
 /*
  * A file to save or truncate
@@ -59,7 +51,7 @@ typedef struct _log_t {
     Flag compress_them;		/* compress archived files */
     Flag dotted_backup;		/* use oooo prefix or suffix */
     Flag backup_suffix;		/* where the backup# goes */
-    ARY(signal_t*) signals;	/* things to do when backup fires */
+    STRING(signal_t*) signals;	/* things to do when backup fires */
     struct _log_t *next;	/* next in chain */
 } log_t;
 

@@ -67,14 +67,14 @@ uncompress(ed)?		{ return yylval = PLAIN; }
 			    BEGIN(INITIAL);
 			    strcpy(yytext, string_buffer);
 			    yyleng = strlen(yytext);
-			    return STRING; }
+			    return TEXT; }
 <string>\n		{   *sbp = 0;
 			    BEGIN(INITIAL);
 			    yyerror("Unterminated string");
 			    strcpy(yytext, string_buffer);
 			    yyleng = strlen(yytext);
 			    line_number++;
-			    return STRING;
+			    return TEXT;
 			}
 <string>\\.		{  *sbp++ = yytext[1]; }
 <string>.		{  *sbp++ = yytext[0]; }

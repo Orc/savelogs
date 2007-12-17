@@ -193,11 +193,6 @@ mksignal(char *sig)
     p[idx] = 0;
 
 
-    /* allocate a new signal entry.
-     */
-    idx = NR(this.signals);
-    GROW(this.signals);
-
     /* then see if the signal is already listed in the global
      * signal list.   If it is, just bump the linkcount, otherwise
      * link a new signal into the list.
@@ -220,7 +215,7 @@ mksignal(char *sig)
     /* and no matter what we still need to remember to
      * execute it if the log is rotated.
      */
-    IT(this.signals,idx) = jot;
+    EXPAND(this.signals) = jot;
 }
 
 
@@ -233,7 +228,7 @@ mkinterval(interval)
 
 %}
 
-%token COMMA PATH SIZE SAVE IN SIGNAL STRING
+%token COMMA PATH SIZE SAVE IN SIGNAL TEXT
 %token NUMBER TOKEN EVERY DAY WEEK MONTH YEAR
 %token SIZE_SPECIFICATION TRUNCATE TOUCH CLASS
 %token SET DOTS NUMBERED SUFFIX PREFIX COMPRESS PLAIN
@@ -272,11 +267,11 @@ commands:	commands statement
 	|	/*nothing*/
 	;
 
-statement:	CLASS STRING
+statement:	CLASS TEXT
 		{ mkclass(yytext); }
 	|	TOUCH NUMBER
 		{ mktouch(yytext); }
-	|	SIGNAL STRING
+	|	SIGNAL TEXT
 		{ mksignal(yytext); }
 	|	SIZE SIZE_SPECIFICATION
 		{ mksize(sizeandunits(yytext)); }

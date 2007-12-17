@@ -19,6 +19,7 @@ set compressed
 
 @HERE@/DEMO3	size=200k
 			save=3 in @HERE@/OLD
+			uncompressed
 			touch=644
 			signal="echo \"hello, world\""
 			signal="echo \"So, who are you?\""

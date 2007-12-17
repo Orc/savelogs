@@ -201,8 +201,8 @@ printfiles(log_t *p)
     if ( p->touch )
 	printf("\tTOUCH %o\n", p->touch);
 
-    for (i=0; i < NR(p->signals); i++)
-	    printf("\tSIGNAL \"%s\"\n", IT(p->signals,i)->command);
+    for (i=0; i < S(p->signals); i++)
+	    printf("\tSIGNAL \"%s\"\n", T(p->signals)[i]->command);
 }
 
 
@@ -266,8 +266,8 @@ onejob(log_t *p, char *class, time_t now)
 
     Trace(1, "Processing %s", p->path);
 
-    for (i = 0; i < NR(p->signals); i++)
-	IT(p->signals,i)->active++;
+    for (i = 0; i < S(p->signals); i++)
+	T(p->signals)[i]->active++;
 
     if ( p->backup && p->backup->count )
 	Archive(p);
