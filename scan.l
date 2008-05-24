@@ -8,7 +8,6 @@ int line_number;
 
 extern YYSTYPE yylval;
 
-#define yywrap()	1
 %}
 
 %x string
@@ -82,3 +81,7 @@ uncompress(ed)?		{ return yylval = PLAIN; }
 {DIGIT}+		{ yylval = atoi(yytext); return NUMBER; }
 \/{FILECHR}+		{ return PATH; }
 .			{ }
+
+%%
+
+int yywrap() { return 1; }
