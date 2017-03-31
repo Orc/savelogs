@@ -2,6 +2,7 @@
 # makefile for savelogs
 #
 LEX	= @LEX@ -li
+YACC	= @YACC@
 CC	= @CC@
 CFLAGS	= @CFLAGS@
 MANDIR  = @mandir@
