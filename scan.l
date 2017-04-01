@@ -1,12 +1,14 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "savelogs.h"
 
 int line_number;
 
 extern YYSTYPE yylval;
+extern void yyerror(char*);
 
 %}
 
