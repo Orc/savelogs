@@ -8,6 +8,8 @@ int line_number;
 
 extern YYSTYPE yylval;
 
+extern void yyerror(char *);
+
 %}
 
 %x string

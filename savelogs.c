@@ -61,6 +61,12 @@ time_t now;		/* what time of day is it, for the SICK AWFUL
 			 * date
 			 */
 
+
+void Archive(log_t *f);
+void process(char *class);
+
+extern int yyparse();
+
 #ifndef HAVE_BASENAME
 /*
  * basename() for systems that don't have it
@@ -134,7 +140,7 @@ Trace(int level, char *fmt, ...)
 /*
  * show what a flag is set to, if it's set
  */
-static char*
+void
 sayflag(char *prefix, Flag f, char *yes, char *no)
 {
     if ( f )
@@ -145,6 +151,7 @@ sayflag(char *prefix, Flag f, char *yes, char *no)
 /*
  * finish() closes syslog, then exits with the given error code
  */
+void NORETURN
 finish(int status)
 {
     if ( !isatty(fileno(stdout)) ) closelog();
@@ -170,7 +177,7 @@ printfiles(log_t *p)
 	printf("\tCLASS \"%s\"\n", p->class);
 
     if ( p->size )
-	printf("\tSIZE %d\n", p->size);
+	printf("\tSIZE %ld\n", (long) (p->size) );
 
     if ( p->dotted_backup != dotted_backup )
 	sayflag("\t", p->dotted_backup, "DOTS", "NUMBERS");
@@ -289,13 +296,11 @@ onejob(log_t *p, char *class, time_t now)
 /*
  * process() looks at all of the offending files
  */
-int
+void
 process(char *class)
 {
     log_t *p;
     signal_t *sig;
-    char *workfile;
-    int doit;
 
     if ( debug ) {
 	sayflag("SET ", dotted_backup, "DOTS", "NUMBERS");
@@ -372,7 +377,7 @@ pushback(log_t *f, int level)
 {
     char *to, *from;
     char *bn = basename(f->path);
-    int i, siz;
+    int siz;
     struct stat st;
 
     if ( level >= f->backup->count ) return;
@@ -401,6 +406,7 @@ pushback(log_t *f, int level)
  * Archive() copies a logfile into a backup directory, keeping old backup
  * copies around for however many generations the user might want.
  */
+void
 Archive(log_t *f)
 {
     char ftext[1024];
@@ -408,7 +414,7 @@ Archive(log_t *f)
     char *arcf;
     int ffd, tfd;
     struct stat st;
-    int rc, mode, size;
+    int mode, size;
 
     pushback(f, 0);
 
@@ -470,6 +476,7 @@ Archive(log_t *f)
 /*
  * savelogs, in the flesh
  */
+int
 main(int argc, char **argv)
 {
     int rc;

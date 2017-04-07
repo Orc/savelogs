@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "savelogs.h"
 
@@ -177,7 +178,7 @@ mksignal(char *sig)
 {
     signal_t *jot;
     int idx;
-    char *p, *q;
+    char *p;
 
 
     /* signals are unix command lines, so leading and
