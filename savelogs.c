@@ -61,10 +61,8 @@ time_t now;		/* what time of day is it, for the SICK AWFUL
 			 * date
 			 */
 
-
 void Archive(log_t *f);
 void process(char *class);
-
 extern int yyparse();
 
 #ifndef HAVE_BASENAME
@@ -140,7 +138,11 @@ Trace(int level, char *fmt, ...)
 /*
  * show what a flag is set to, if it's set
  */
+<<<<<<< HEAD
 void
+=======
+static void
+>>>>>>> e92f2dec8c41de50ac9c49b84251027e1ab9a83f
 sayflag(char *prefix, Flag f, char *yes, char *no)
 {
     if ( f )
@@ -151,7 +153,11 @@ sayflag(char *prefix, Flag f, char *yes, char *no)
 /*
  * finish() closes syslog, then exits with the given error code
  */
+<<<<<<< HEAD
 void NORETURN
+=======
+void
+>>>>>>> e92f2dec8c41de50ac9c49b84251027e1ab9a83f
 finish(int status)
 {
     if ( !isatty(fileno(stdout)) ) closelog();
@@ -177,7 +183,11 @@ printfiles(log_t *p)
 	printf("\tCLASS \"%s\"\n", p->class);
 
     if ( p->size )
+<<<<<<< HEAD
 	printf("\tSIZE %ld\n", (long) (p->size) );
+=======
+	printf("\tSIZE %ld\n", (long)(p->size) );
+>>>>>>> e92f2dec8c41de50ac9c49b84251027e1ab9a83f
 
     if ( p->dotted_backup != dotted_backup )
 	sayflag("\t", p->dotted_backup, "DOTS", "NUMBERS");
