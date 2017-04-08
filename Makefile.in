@@ -39,7 +39,7 @@ untest:
 	rm -rf OLD
 
 distclean spotless: clean
-	rm -f config.* Makefile savelogs.8
+	@DISTCLEAN@ @GENERATED_FILES@ @CONFIGURE_FILES@
 
 preptest: untest
 	-mkdir OLD

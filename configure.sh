@@ -21,6 +21,8 @@ AC_PROG_LEX || AC_FAIL "$TARGET needs lex"
 AC_PROG_YACC || AC_FAIL "$TARGET needs yacc"
 MF_PATH_INCLUDE COMPRESS gzip compress
 
+unset _MK_LIBRARIAN
+
 if [ "IS_BROKEN_CC" ]; then
     # gcc, clang
     case "$AC_CC $AC_CFLAGS" in

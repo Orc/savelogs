@@ -164,24 +164,25 @@ __MAKEDOTO() {
 #
 AC_CHECK_HEADERS () {
 
-    __hdr=$1
     AC_PROG_CPP
 
-    shift
-    (   echo "/* AC_CHECK_HEADERS */"
-	echo "#include <${__hdr}>" ) > ngc$$.c
+    for __hdr in "$@"; do
+	(   echo "/* AC_CHECK_HEADERS */"
+	    echo "#include <${__hdr}>" ) > ngc$$.c
 
-    LOGN "looking for header $__hdr"
+	LOGN "looking for header $__hdr"
 
-    if $AC_CPP_FILTER ngc$$.c >/dev/null; then
-	AC_DEFINE 'HAVE_'`echo $__hdr | $AC_UPPERCASE | tr './' '_'` 1
-	rc=0
-	LOG " (found)"
-    else
-	LOG " (not found)"
-	rc=1
-    fi
-    __remove ngc$$.c
+	if $AC_CPP_FILTER ngc$$.c >/dev/null; then
+	    AC_DEFINE 'HAVE_'`echo $__hdr | $AC_UPPERCASE | tr './' '_'` 1
+	    rc=0
+	    LOG " (found)"
+	else
+	    rc=1
+	    LOG " (not found)"
+	fi
+	__remove ngc$$.c
+    done
+    # return code is only meaningful if one header is checked
     return $rc
 }
 
@@ -221,14 +222,14 @@ EOF
 
     LOGN "looking for the $B function"
 
-    if $AC_CC -o ngc$$ ngc$$.c $LIBS; then
+    if $AC_CC $AC_CFLAGS $AC_LDFLAGS -o ngc$$ ngc$$.c $LIBS; then
 	AC_DEFINE `echo ${2:-HAVE_$B} | $AC_UPPERCASE` 1
 	TLOG " (found)"
 	rc=0
     else
 	echo "offending command was:"
 	cat ngc$$.c
-	echo "$AC_CC -o ngc$$ ngc$$.c $LIBS"
+	echo "$AC_CC $AC_CFLAGS $AC_LDFLAGS -o ngc$$ ngc$$.c $LIBS"
 	TLOG " (not found)"
 	rc=1
     fi
@@ -409,18 +410,18 @@ EOF
 
 	if [ "$CFLAGS" ]; then
 	    test "$CFLAGS" && echo "validating CFLAGS=${CFLAGS}"
-	    if $AC_CC $CFLAGS -o ngc$$.o ngc$$.c ; then
+	    if $AC_CC $CFLAGS -c -o ngc$$.o ngc$$.c ; then
 		AC_CFLAGS=${CFLAGS:-"-g"}
-		test "$CFLAGS" && echo "CFLAGS=\"${CFLAGS}\" are okay"
+		test "$CFLAGS" && TLOG "CFLAGS=\"${CFLAGS}\" are okay"
 	    elif [ "$CFLAGS" ]; then
-		echo "ignoring bogus CFLAGS=\"${CFLAGS}\""
+		TLOG "ignoring bogus CFLAGS=\"${CFLAGS}\""
 	    fi
 	else
 	    AC_CFLAGS=-g
 	fi
 	if [ "$LDFLAGS" ]; then
 	    test "$LDFLAGS" && echo "validating LDFLAGS=${LDFLAGS}"
-	    if $AC_CC $LDFLAGS -o ngc$$ ngc$$.o; then
+	    if $AC_CC $CFLAGS $LDFLAGS -o ngc$$ ngc$$.c; then
 		AC_LDFLAGS=${LDFLAGS:-"-g"}
 		test "$LDFLAGS" && TLOG "LDFLAGS=\"${LDFLAGS}\" are okay"
 	    elif [ "$LDFLAGS" ]; then
@@ -442,27 +443,6 @@ EOF
     __remove ngc$$ ngc$$.c ngc$$.o
 
     return $status
-}
-
-
-#
-# check for the existence of  __attribute__((__noreturn__))
-#
-AC_CHECK_NORETURN() {
-    AC_PROG_CC
-
-    echo "extern int noreturn  __attribute__((__noreturn__));" > ngc$$.c
-
-    TLOGN "Checking __attribute__((__noreturn__)) "
-    if $AC_CC -c ngc$$.c; then
-	TLOG "(yes)"
-	AC_DEFINE 'NORETURN' ' __attribute__((__noreturn__))'
-    else
-	TLOG "(no)"
-	AC_DEFINE 'NORETURN' ''
-    fi
-
-    rm -f ngc$$.c ngc$$.o
 }
 
 
@@ -560,6 +540,7 @@ AC_INIT () {
     rm -f $$
 
     LOG "Configuring for [$1]"
+    _MK_LIBRARIAN=Y
 
     cat > "$__cwd"/config.h << EOF
 /*
@@ -752,9 +733,9 @@ AC_PROG () {
 # AC_PROG_LN_S checks to see if ln exists, and, if so, if ln -s works
 #
 AC_PROG_LN_S () {
-    test "$AC_FIND_PROG" || AC_PROG_FIND
+    test "$PROG_FIND" || AC_PROG_FIND
 
-    test "$AC_FIND_PROG" || return 1
+    test "$PROG_LN_S" && return 0
     
     TLOGN "looking for \"ln -s\""
     DEST=`acLookFor ln`
@@ -762,7 +743,7 @@ AC_PROG_LN_S () {
     if [ "$DEST" ]; then
 	rm -f /tmp/b$$
 	$DEST -s /tmp/a$$ /tmp/b$$
-	if [ "`$AC_FIND_PROG /tmp/b$$ -type l -print`" ]; then
+	if [ "`$PROG_FIND /tmp/b$$ -type l -print`" ]; then
 	    TLOG " ($DEST)"
 	    echo "$DEST exists, and ln -s works"
 	    PROG_LN_S="$DEST -s"
@@ -789,10 +770,10 @@ AC_PROG_LN_S () {
 # variable
 #
 AC_PROG_FIND () {
-    if test -z "$AC_FIND_PROG"; then
+    if test -z "$PROG_FIND"; then
 	MF_PATH_INCLUDE FIND find
 	rc=$?
-	AC_FIND_PROG=$DEST
+	PROG_FIND=$CF_FIND
 	return $rc
     fi
     return 0
@@ -843,6 +824,26 @@ AC_TYPE_PID_T () {
 
     AC_CHECK_TYPE pid_t sys/types.h
     return $?
+}
+
+
+#
+# check for the existence of  __attribute__((__noreturn__))
+#
+AC_CHECK_NORETURN() {
+    AC_PROG_CC
+
+    echo "extern int noreturn  __attribute__((__noreturn__));" > ngc$$.c
+
+    TLOGN "Checking __attribute__((__noreturn__)) "
+    if $AC_CC -c ngc$$.c; then
+	TLOG "(yes)"
+	AC_DEFINE 'NORETURN' ' __attribute__((__noreturn__))'
+    else
+	TLOG "(no)"
+	AC_DEFINE 'NORETURN' ''
+    fi
+    rm -f ngc$$.o ngc$$.c
 }
 
 
@@ -929,7 +930,7 @@ AC_WHATIS() {
 
 	echo "main() { printf(\"${MACRO}=\\\"${__fmt}\\\"\\n\", ${MACRO}); }" )  > _ngc$$.c
 
-    if $AC_CC -o _ngc$$ _ngc$$.c; then
+    if $AC_CC $AC_CFLAGS -o _ngc$$ _ngc$$.c; then
 	./_ngc$$
 	rc=0
     else
@@ -1043,25 +1044,28 @@ AC_OUTPUT () {
     
     if test "$__MACOS_DSYM"; then
 	# deal with extra OSX droppings, if they exist
-	AC_SUB 'GENERATED_FILES' "-r *.dSYM $*"
+	AC_SUB 'DISTCLEAN' 'rm -fr'
+	AC_SUB 'GENERATED_FILES' "*.dSYM $*"
     else
+	AC_SUB 'DISTCLEAN' 'rm -f'
 	AC_SUB 'GENERATED_FILES' "$*"
     fi
     
-    AC_SUB 'CC'      "$AC_CC"
-    AC_SUB 'CFLAGS'  "$AC_CFLAGS"
-    AC_SUB 'LDFLAGS' "$AC_LDFLAGS"
-    AC_SUB 'srcdir'  "$AC_SRCDIR"
-    AC_SUB 'prefix'  "$AC_PREFIX"
-    AC_SUB 'exedir'  "$AC_EXECDIR"
-    AC_SUB 'bindir'  "$AC_EXECDIR"
-    AC_SUB 'sbindir' "$AC_SBINDIR"
-    AC_SUB 'libdir'  "$AC_LIBDIR"
-    AC_SUB 'libexec' "$AC_LIBEXEC"
-    AC_SUB 'confdir' "$AC_CONFDIR"
-    AC_SUB 'mandir'  "$AC_MANDIR"
+    AC_SUB 'CC'       "$AC_CC"
+    AC_SUB 'CFLAGS'   "$AC_CFLAGS"
+    AC_SUB 'LDFLAGS'  "$AC_LDFLAGS"
+    AC_SUB 'CPPFLAGS' "$CPPFLAGS"
+    AC_SUB 'srcdir'   "$AC_SRCDIR"
+    AC_SUB 'prefix'   "$AC_PREFIX"
+    AC_SUB 'exedir'   "$AC_EXECDIR"
+    AC_SUB 'bindir'   "$AC_EXECDIR"
+    AC_SUB 'sbindir'  "$AC_SBINDIR"
+    AC_SUB 'libdir'   "$AC_LIBDIR"
+    AC_SUB 'libexec'  "$AC_LIBEXEC"
+    AC_SUB 'confdir'  "$AC_CONFDIR"
+    AC_SUB 'mandir'   "$AC_MANDIR"
 
-    if echo "$__config_files" | grep -v librarian.sh >/dev/null; then
+    if [ "$_MK_LIBRARIAN" ] && echo "$__config_files" | grep -v librarian.sh >/dev/null; then
 	# write a librarian that works with static libraries
 	if AC_PROG_LN_S ; then
 	    __dolink=$PROG_LN_S
@@ -1086,7 +1090,16 @@ LIBRARY=\$1; shift
 VERSION=\$1; shift
 
 case "\$ACTION" in
-make)   ${PROG_AR} crv \$LIBRARY.a "\$@"
+make)   # first strip out any libraries that might
+	# be passed in on the object line
+	objs=
+	for x in "\$@"; do
+	    case "\$x" in
+	    -*) ;;
+	    *) objs="\$objs \$x" ;;
+	    esac
+	done
+	${PROG_AR} crv \$LIBRARY.a \$objs
 	${PROG_RANLIB} \$LIBRARY.a
 	rm -f \$LIBRARY
 	${__dolink} \$LIBRARY.a \$LIBRARY
@@ -1113,7 +1126,7 @@ EOF
 	Q=\'
 	cat - > config.cmd << EOF
 #! /bin/sh
-${CC:+CC=${Q}${CC}${Q}} ${CFLAGS:+CFLAGS=${Q}${CFLAGS}${Q}} $ac_progname $ac_configure_command
+${CC:+CC=${Q}${CC}${Q}} ${CFLAGS:+CFLAGS=${Q}${CFLAGS}${Q}} ${LDFLAGS:+LDFLAGS=${Q}${LDFLAGS}${Q}} $ac_progname $ac_configure_command
 EOF
 	chmod +x config.cmd
 
@@ -1430,10 +1443,12 @@ AC_CC_SHLIBS () {
     AC_PROG_CC || AC_FAIL "Need a C compiler to build shared libraries"
     AC_PROG_LN_S || AC_FAIL "Need to be able to make symbolic links for shared libraries"
     AC_PROG_INSTALL || AC_FAIL "Need an install program to install shared libraries"
+    
     LOGN "checking whether the C compiler can build shared libraries "
 
     echo "int some_variable = 0;" > ngc$$.c 
 
+    _MK_LIBRARIAN=
     if uname -a | grep Darwin >/dev/null; then
 	# Claims to be macos?
 	if $AC_CC $AC_PICFLAG  -dynamiclib -o ngc$$.so ngc$$.c; then
@@ -1450,6 +1465,7 @@ AC_CC_SHLIBS () {
         LOG "(yes; -shared)"
 	__rc=0
     else
+	_MK_LIBRARIAN=Y
         LOG "(no)"
 	__rc=1
     fi
@@ -1554,12 +1570,20 @@ acCheckCPP () {
 FOO
 EOF
 
-    if $1 $2 ngc$$.c > ngc$$.o; then
+    good=
+    use_cflags=
+    if $1 $2 $AC_CFLAGS ngc$$.c > ngc$$.o; then
+	good=1
+	use_cflags=1
+    elif $1 $2 ngc$$.c > ngc$$.o; then
+	good=1
+    fi
+
+    if [ "$good" ]; then
 	if grep -v '#define' ngc$$.o | grep -s BAR >/dev/null; then
-	    echo "CPP=[$1], CPPFLAGS=[$2]"
+	    echo "CPP=[$1], CPP_PIPE=[$2${use_cflags:+ $AC_CFLAGS}]"
 	    AC_SUB 'CPP' "$1"
-	    AC_SUB 'CPPFLAGS' "$2"
-	    AC_CPP_FILTER="$1 $2"
+	    AC_CPP_FILTER="$1 $2${use_cflags:+ $AC_CFLAGS}"
 	    rm ngc$$.c ngc$$.o
 	    return 0
 	fi
@@ -1575,6 +1599,8 @@ EOF
 AC_PROG_CPP () {
     test "$AC_CPP_FILTER" && return
 
+    AC_PROG_CC
+
     if [ "$AC_CPP_PROG" ]; then
 	DEST=$AC_CPP_PROG
     else
@@ -1586,6 +1612,12 @@ AC_PROG_CPP () {
 
     unset fail
     LOGN "Looking for cpp"
+    
+    if acCheckCPP "$AC_CC" -E; then
+	TLOG " (using \$CC -E as a cpp pipeline)"
+	return 0
+    fi
+    
     if [ "$DEST" ]; then
 	TLOGN " ($DEST)"
 	acCheckCPP $DEST "$CPPFLAGS" || \
