@@ -52,10 +52,10 @@ demo.conf: preptest
 
 test demo: savelogs preptest demo.conf
 	./savelogs -ddd -C demo.conf
-	@echo -n "test DEMO1..."; test ! -r DEMO1 && echo "ok" || echo "failed"
-	@echo -n "test DEMO2..."; test   -r DEMO2 && echo "ok" || echo "failed"
-	@echo -n "test DEMO3..."; test ! -s DEMO3 && echo "ok" || echo "failed"
-	@echo -n "test DEMO4..."; test ! -r DEMO4 && echo "ok" || echo "failed"
+	@printf "test DEMO1..."; test ! -r DEMO1 && echo "ok" || echo "failed"
+	@printf "test DEMO2..."; test   -r DEMO2 && echo "ok" || echo "failed"
+	@printf "test DEMO3..."; test ! -s DEMO3 && echo "ok" || echo "failed"
+	@printf "test DEMO4..."; test ! -r DEMO4 && echo "ok" || echo "failed"
 
 install: install.man install.bin 
 
