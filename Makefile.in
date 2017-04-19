@@ -35,27 +35,26 @@ clean: untest
 	rm -f savelogs *.o lex.yy.? version.c y.tab.?
 
 untest:
-	rm -f DEMO? demo.conf
-	rm -rf OLD
+	rm -rf tests
 
 distclean spotless: clean
 	@DISTCLEAN@ @GENERATED_FILES@ @CONFIGURE_FILES@
 
 preptest: untest
-	-mkdir OLD
+	@INSTALL_DIR@ tests/OLD
 	for file in DEMO1 DEMO2 DEMO3 DEMO4 DEMO5; do \
-	    dd if=/dev/zero of=$$file count=201 bs=1024 >/dev/null; \
+	    dd if=/dev/zero of=tests/$$file count=201 bs=1024 >/dev/null; \
 	done
 
-demo.conf: preptest
-	@SED@ -e "s~@HERE@~`pwd`~g" < demo.conf.sh > demo.conf
+tests/demo.conf: preptest
+	@SED@ -e "s~@HERE@~`pwd`/tests~g" < demo.conf.sh > tests/demo.conf
 
-test demo: savelogs preptest demo.conf
-	./savelogs -ddd -C demo.conf
-	@test ! -r DEMO1 && echo "test DEMO1... ok" || echo "test DEMO1... failed"
-	@test   -r DEMO2 && echo "test DEMO2... ok" || echo "test DEMO2... failed"
-	@test ! -s DEMO3 && echo "test DEMO3... ok" || echo "test DEMO3... failed"
-	@test ! -r DEMO4 && echo "test DEMO4... ok" || echo "test DEMO4... failed"
+test demo: savelogs preptest tests/demo.conf
+	./savelogs -ddd -C tests/demo.conf
+	@test ! -r tests/DEMO1 && echo "test DEMO1... ok" || echo "test DEMO1... failed"
+	@test   -r tests/DEMO2 && echo "test DEMO2... ok" || echo "test DEMO2... failed"
+	@test ! -s tests/DEMO3 && echo "test DEMO3... ok" || echo "test DEMO3... failed"
+	@test ! -r tests/DEMO4 && echo "test DEMO4... ok" || echo "test DEMO4... failed"
 
 install: install.man install.bin 
 
